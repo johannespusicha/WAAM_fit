@@ -18,4 +18,4 @@ if __name__ == '__main__':
             if option == '-o':
                 OutputPath = args[i]
             option = ''
-    WAAMEvaluator.evaluate(InputPath, OutputPath)
+    WAAMEvaluator.evaluateSpheres(InputPath, OutputPath)

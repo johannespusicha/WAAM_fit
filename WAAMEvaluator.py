@@ -1,5 +1,6 @@
 import gmsh
 import numpy as np
+from scipy.optimize import root
 from polygonTester import PolygonTester
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -7,58 +8,120 @@ from mpl_toolkits.mplot3d import Axes3D
 gmsh.initialize()
 
 
-def __step2gmsh__(geoFilePath):
-    gmsh.model.remove()
-    gmsh.model.add('model')
-    gmsh.model.occ.importShapes(geoFilePath)
+def evaluateSpheres(input, output, stepSize=0):
+    gmsh.model.occ.importShapes(input)
     gmsh.model.occ.synchronize()
+    if stepSize != 0:
+        gmsh.model.mesh.setSize(gmsh.model.occ.getEntities(0), stepSize)
+    gmsh.model.mesh.generate(2)
+    nc, inz = __MshFromGmsh__()
+    cnts = nc[inz].mean(axis=1)
+    r = getSphereRadii(nc, inz)
+    gradient = np.zeros_like(r)
+    for i in range(gradient.shape[0]):
+        neighbours = (np.isin(inz, inz[i]).sum(axis=1) == 2).nonzero()[0]
+        gradient[i] = np.linalg.norm((r[i] - r[neighbours]) / np.linalg.norm(cnts[neighbours] - cnts[i], axis=1))
+
+    print('')
 
 
-def evaluate(input, output, strides=np.array([10, 10, 10])):
-    __step2gmsh__(input)
-    pointInPolygonTester = PolygonTester()
-    boundingBox = np.array(gmsh.model.get_bounding_box(-1, -1)).reshape([-1, 3])
-    dx = (boundingBox[1] - boundingBox[0]) / strides
-    x, y, z = np.meshgrid(np.linspace(boundingBox[0, 0], boundingBox[1, 0], strides[0]),
-                          np.linspace(boundingBox[0, 1], boundingBox[1, 1], strides[1]),
-                          np.linspace(boundingBox[0, 2], boundingBox[1, 2], strides[2]))
-    pnts = np.vstack([x.flatten(), y.flatten(), z.flatten()]).T
-    r = __getRadii__(pnts).reshape(strides)
-    grad = np.zeros([strides[0] - 2, strides[1] - 2, strides[2] - 2])
-    inInPnts = pointInPolygonTester.pntInPolygon(pnts).reshape(strides.tolist())
-    isIn = inInPnts[1:-1, 1:-1, 1:-1].flatten()
+def getSphereRadii(nc, inz):
+    faces = gmsh.model.getEntities(2)
+    cnts = nc[inz].mean(axis=1)
+    faceId = np.zeros(inz.shape[0], dtype=int)
+    N = np.zeros(inz.shape)
+    for i in range(inz.shape[0]):
+        minDst = np.inf
+        for face in faces:
+            dst = np.linalg.norm(gmsh.model.get_closest_point(2, face[1], cnts[i])[0] - cnts[i])
+            if dst < minDst:
+                minDst = dst
+                faceId[i] = face[1]
+        N[i] = -gmsh.model.getNormal(faceId[i], gmsh.model.getParametrization(2, faceId[i], cnts[i]))
 
-    for i in range(1, strides[0] - 1):
-        for j in range(1, strides[1] - 1):
-            for k in range(1, strides[2] - 1):
-                grad[i - 1, j - 1, k - 1] = np.linalg.norm([(r[i + 1, j, k] - r[i - 1, j, k]) / dx[0],
-                                                            (r[i, j + 1, k] - r[i, j - 1, k]) / dx[1],
-                                                            (r[i, j, k + 1] - r[i, j, k - 1]) / dx[2]])
+    r = np.zeros(inz.shape[0])
+    for i in range(inz.shape[0]):
+        f = lambda r: __evalRadius__(cnts[i], N[i], faceId[i], r)
+        r[i] = root(f, 0)['x']
+    gmsh.model.remove()
+    return r
 
+def __evalRadius__(basePnt, N, excludedFace,r):
+    faces = gmsh.model.getEntities(2)
+    minDst = np.inf
+    cnt = basePnt + N * r
+    for face in faces:
+        if face[1] == excludedFace:
+            continue
+        dst = np.linalg.norm(gmsh.model.get_closest_point(2, face[1], cnt)[0] - cnt)
+        if dst < minDst:
+            minDst = dst
+    return r - minDst
 
-    sgrad = ((grad - grad.min()) / (grad.max() - grad.min())).flatten()
-
-    plotPnts = np.vstack([x[1:-1, 1:-1, 1:-1].flatten(), y[1:-1, 1:-1, 1:-1].flatten(), z[1:-1, 1:-1, 1:-1].flatten()]).T
-
-    plotColor = np.vstack([sgrad, np.zeros_like(sgrad), 1 - sgrad]).T
-    fig = plt.figure()
-    ax = Axes3D(fig, auto_add_to_figure=False)
-    fig.add_axes(ax)
-
-    isIn[np.logical_not(np.logical_and(0 < plotPnts[:, 2], plotPnts[:, 2] < 0.5))] = False
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    ax.scatter(plotPnts[isIn, 0], plotPnts[isIn, 1], plotPnts[isIn, 2], c=plotColor[isIn])
+def evaluateIslands(input, output, N=np.array([0, 0, 1]), stepSize=0):
+    nc, inz = __getMsh__(input)
+    bb = np.reshape(gmsh.model.getBoundingBox(-1, -1), (2, 3))
+    cnt = bb.mean(axis=0)
+    N = N / np.linalg.norm(N)
+    X0 = N * np.inner(cnt - bb[0], N)
+    pathLen = np.linalg.norm(bb[1] - bb[0])
+    if stepSize <= 0:
+        ed = np.vstack([inz[:, [0, 1]], inz[:, [0, 2]], inz[:, [1, 2]]]).T
+        stepSize = np.linalg.norm(nc[ed[0]] - nc[ed[1]], axis=1).min()
+    steps = int(np.round(pathLen / stepSize))
+    stepSize = pathLen/steps
+    for i in range(steps):
+        X = X0 + N * i * stepSize
+        slice = __getSlice(nc, inz, X, N)
 
     gmsh.model.remove()
 
 
-def __getRadii__(pnts):
-    r = np.full(pnts.shape[0], np.inf)
-    faces = gmsh.model.getEntities(2)
-    for i in range(r.shape[0]):
-        for face in faces:
-            S = gmsh.model.get_closest_point(2, face[1], pnts[i])[0]
-            r[i] = min(r[i], np.linalg.norm(S - pnts[i]))
-    return r
+def __getSlice(nc, inz, X, N):
+    ncOut = np.array([0, 3])
+    edOut = np.array([0, 2], dtype=int)
+
+    for i in range(inz.shape[0]):
+            trgNodeDir = np.sign(np.inner(X - nc[inz[i]], N))
+            if not (trgNodeDir == trgNodeDir[0]).all(): #Is triangle is cut by plane X, N?
+                A = nc[inz[i, 0]]
+                B = nc[inz[i, 1]]
+                C = nc[inz[i, 2]]
+
+                if trgNodeDir[0] == trgNodeDir[1]:
+                    print('') #ToDo: complete
+                elif trgNodeDir[0] == trgNodeDir[2]:
+                    print('') #ToDo: complete
+
+                elif trgNodeDir[1] == trgNodeDir[2]:
+                    print('') #ToDo: complete
+    print('')
+
+
+def __getMsh__(input):
+    if input[-3:] == 'stp' or input[-4:] == 'step':
+        gmsh.model.occ.importShapes(input)
+        gmsh.model.occ.synchronize()
+    elif input[-3:] == 'stl':
+        gmsh.open(input)
+    else:
+        raise 'unknown format'
+    return __MshFromGmsh__()
+
+
+def __MshFromGmsh__():
+    nodeCoords = np.array([], dtype=float)
+    gmsh.model.mesh.renumber_nodes()
+    for i in range(0, 3):
+        rnodeCoords = gmsh.model.mesh.getNodes(i)[1]
+        nodeCoords = np.append(nodeCoords, rnodeCoords)
+    nc = nodeCoords.reshape(-1, 3)
+    elemTypes, elemTags, elemNodeTags = gmsh.model.mesh.getElements(2)
+    for i in range(len(elemTypes)):
+        elemTypes[i] = elemTypes[i].astype(int)
+        elemTags[i] = elemTags[i].astype(int)
+        elemNodeTags[i] = elemNodeTags[i].astype(int).reshape(elemTags[i].shape[0], -1) - 1
+    if len(elemTypes) == 0:
+        return np.zeros((0, 3)), np.zeros(0, dtype=int)
+    else:
+        return nc, elemNodeTags[0]
