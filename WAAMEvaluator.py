@@ -1,6 +1,11 @@
 import gmsh
 import numpy as np
+from copy import deepcopy
 from scipy.optimize import root
+import os, sys, random
+import tempfile
+import platform
+import subprocess
 from polygonTester import PolygonTester
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -21,7 +26,7 @@ def evaluateSpheres(input, output, stepSize=0):
     for i in range(gradient.shape[0]):
         neighbours = (np.isin(inz, inz[i]).sum(axis=1) == 2).nonzero()[0]
         gradient[i] = np.linalg.norm((r[i] - r[neighbours]) / np.linalg.norm(cnts[neighbours] - cnts[i], axis=1))
-
+    plotSolid(nc, inz, r, autoLaunch=False)
     print('')
 
 
@@ -39,24 +44,45 @@ def getSphereRadii(nc, inz):
                 faceId[i] = face[1]
         N[i] = -gmsh.model.getNormal(faceId[i], gmsh.model.getParametrization(2, faceId[i], cnts[i]))
 
-    r = np.zeros(inz.shape[0])
+    r = -np.ones(inz.shape[0])
     for i in range(inz.shape[0]):
         f = lambda r: __evalRadius__(cnts[i], N[i], faceId[i], r)
-        r[i] = root(f, 0)['x']
+        start = 2
+        for j in range(10):
+            start = start / 2
+            solObj = root(f, start)
+            if solObj['success']:
+                r[i] = solObj['x']
+                break
     gmsh.model.remove()
     return r
 
-def __evalRadius__(basePnt, N, excludedFace,r):
+
+def plotCurrentGeo():
+    fp = os.path.join(tempfile.gettempdir(), '0') + '.step'
+    while os.path.exists(fp):
+        fp = os.path.join(tempfile.gettempdir(), str(random.randint(0, 10 ** 6))) + '.step'
+    gmsh.write(fp)
+    subprocess.Popen(
+        [sys.executable, os.path.join(os.path.abspath(os.getcwd()), 'GmshPlotter.py'), fp],
+        shell=False)
+
+
+def __evalRadius__(basePnt, N, excludedFace, r):
     faces = gmsh.model.getEntities(2)
     minDst = np.inf
     cnt = basePnt + N * r
     for face in faces:
         if face[1] == excludedFace:
             continue
-        dst = np.linalg.norm(gmsh.model.get_closest_point(2, face[1], cnt)[0] - cnt)
-        if dst < minDst:
-            minDst = dst
+        x = gmsh.model.get_closest_point(2, face[1], cnt)[0]
+        uv = gmsh.model.getParametrization(2, face[1], x)
+        if gmsh.model.is_inside(2, face[1], uv, parametric=True) != 0:
+            dst = np.linalg.norm(x - cnt)
+            if dst < minDst:
+                minDst = dst
     return r - minDst
+
 
 def evaluateIslands(input, output, N=np.array([0, 0, 1]), stepSize=0):
     nc, inz = __getMsh__(input)
@@ -125,3 +151,80 @@ def __MshFromGmsh__():
         return np.zeros((0, 3)), np.zeros(0, dtype=int)
     else:
         return nc, elemNodeTags[0]
+
+
+def __exportToOpenSCAD__(msh, outPath, elemNames=None, colors=None):
+    elemTypeShortNames = {2: 'Triangle', 3: 'Quad', 4: 'Tetrahedron', 5: 'Hexahedron', 6: 'Prism', 7: 'Pyramid'}
+    elemColors = {2: 'red', 3: 'blue', 4: 'blue', 5: 'red', 6: 'green', 7: 'yellow'}
+
+    fileContent = ['//Mesh exported using MeshTools.exportToOpenSCAD\n']
+
+    nc = msh['nc']
+
+    # write point coordinates
+    fileContent += ['Points = [\n']
+    for i in range(nc.shape[0]):
+        fileContent += [str(nc[i].tolist()) + ', // ' + str(i) + '\n']
+    fileContent += ['  ];\n']
+
+    # write elements
+    e = 0
+    for etIndex in range(msh['elemTypes'].shape[0]):
+        et = msh['elemTypes'][etIndex]
+        etFaces = [np.array([0, 1, 2], dtype=int)]
+        inz = msh['inz'][etIndex]
+        for i in range(inz.shape[0]):
+            if elemNames is None:
+                elemName = elemTypeShortNames[et] + str(i)
+            else:
+                elemName = str(elemNames[et][i])
+            fileContent += ['\n' + elemName + ' = [\n']
+            cnt = msh['nc'][inz[0]].mean(axis=0)
+            for face in etFaces:
+                N = np.cross(nc[inz[i, face[1]]] - nc[inz[i, face[0]]], nc[inz[i, face[2]]] - nc[inz[i, face[1]]])
+                if np.inner(np.mean(nc[inz[i, face]], axis=0) - cnt, N) > 0:
+                    fileContent += [str(inz[i, face].tolist()) + ',']
+                else:
+                    fileContent += [str(inz[i, np.flip(face)].tolist()) + ',']
+            fileContent[-1] = fileContent[-1][:-1]
+            fileContent += ['  ];\n']
+
+            fileContent += ['//[' + str(inz[i].tolist()) + ']\n']
+            if colors is None:
+                fileContent += ['color("' + elemColors[et] + '") polyhedron( Points, ' + elemName + ' );\n']
+            else:
+                fileContent += ['color(' + colors[e] + ') polyhedron( Points, ' + elemName + ' );\n']
+            e = e + 1
+
+    fileContent += ['LineWidth = 0.03;\n']
+
+    fileContent += ['module line(start, end, thickness) {\n']
+    fileContent += ['    color("black") hull() {\n']
+    fileContent += ['        translate(start) sphere(thickness);\n']
+    fileContent += ['        translate(end) sphere(thickness);\n']
+    fileContent += ['    }\n']
+    fileContent += ['}\n']
+
+    if not outPath[-5:] == '.scad':
+        outPath += '.scad'
+    fp = open(outPath, 'w')
+    fp.writelines(fileContent)
+    fp.close()
+
+
+def plotSolid(nc, inz, value, autoLaunch=True):
+    scadPath = os.path.join(tempfile.gettempdir(), 'out.scad')
+    value = value - value.min()
+    value = value/value.max()
+    clormap = [''] * inz.shape[0]
+    for i in range(inz.shape[0]):
+        clormap[i] = '[' + str(value[i]) + ', 0., ' + str(1 - value[i]) + ']'
+
+    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, scadPath, colors=clormap)
+    if autoLaunch:
+        if platform.system() == 'Darwin':
+            subprocess.call(('open', scadPath))
+        elif platform.system() == 'Windows':
+            os.startfile(scadPath)
+        else:
+            subprocess.call(('xdg-open', scadPath))
