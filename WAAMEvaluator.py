@@ -1,5 +1,6 @@
 import gmsh
 import numpy as np
+import pickle
 from copy import deepcopy
 from scipy.optimize import root
 import os, sys, random
@@ -21,12 +22,26 @@ def evaluateSpheres(input, output, stepSize=0):
     gmsh.model.mesh.generate(2)
     nc, inz = __MshFromGmsh__()
     cnts = nc[inz].mean(axis=1)
+
     r = getSphereRadii(nc, inz)
     gradient = np.zeros_like(r)
     for i in range(gradient.shape[0]):
         neighbours = (np.isin(inz, inz[i]).sum(axis=1) == 2).nonzero()[0]
+        neighbours = neighbours[r[neighbours] != -1] #neglect invalid radii
         gradient[i] = np.linalg.norm((r[i] - r[neighbours]) / np.linalg.norm(cnts[neighbours] - cnts[i], axis=1))
-    plotSolid(nc, inz, r, autoLaunch=False)
+    r_scaled = r/r.max()
+    grad_scaled = gradient - gradient.min()
+
+    if not os.path.exists(os.path.dirname(output)):
+        os.mkdir(os.path.dirname(output))
+
+    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, output + '_r.scad', colors=r_scaled)
+
+    btm_95_percent = (grad_scaled < grad_scaled.max() * 0.95)
+    grad_scaled[grad_scaled >= grad_scaled.max() * 0.95] = grad_scaled[btm_95_percent.nonzero()[0][grad_scaled[btm_95_percent].argmax()]]
+    grad_scaled = grad_scaled / grad_scaled.max()
+
+    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, output + '_gradient.scad', colors=grad_scaled)
     print('')
 
 
@@ -154,6 +169,11 @@ def __MshFromGmsh__():
 
 
 def __exportToOpenSCAD__(msh, outPath, elemNames=None, colors=None):
+    if colors is list:
+        colors = np.array(colors)
+    if colors.ndim == 1:
+        colors = np.expand_dims(colors, 1)
+
     elemTypeShortNames = {2: 'Triangle', 3: 'Quad', 4: 'Tetrahedron', 5: 'Hexahedron', 6: 'Prism', 7: 'Pyramid'}
     elemColors = {2: 'red', 3: 'blue', 4: 'blue', 5: 'red', 6: 'green', 7: 'yellow'}
 
@@ -193,7 +213,14 @@ def __exportToOpenSCAD__(msh, outPath, elemNames=None, colors=None):
             if colors is None:
                 fileContent += ['color("' + elemColors[et] + '") polyhedron( Points, ' + elemName + ' );\n']
             else:
-                fileContent += ['color(' + colors[e] + ') polyhedron( Points, ' + elemName + ' );\n']
+                if colors.shape[1] == 3:
+                    colorEntry = '[' + str(colors[e, 0]) + ', ' + str(colors[e, 0]) + ', ' + str(1 - colors[e]) + ']'
+                else:
+                    if colors[e] >= 0:
+                        colorEntry = '[' + str(colors[e, 0]) + ', 0., ' + str(1 - colors[e, 0]) + ']'
+                    else:
+                        colorEntry = '[1., 1., 1.]'
+                fileContent += ['color(' + colorEntry + ') polyhedron( Points, ' + elemName + ' );\n']
             e = e + 1
 
     fileContent += ['LineWidth = 0.03;\n']
@@ -220,7 +247,7 @@ def plotSolid(nc, inz, value, autoLaunch=True):
     for i in range(inz.shape[0]):
         clormap[i] = '[' + str(value[i]) + ', 0., ' + str(1 - value[i]) + ']'
 
-    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, scadPath, colors=clormap)
+    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, scadPath, value)
     if autoLaunch:
         if platform.system() == 'Darwin':
             subprocess.call(('open', scadPath))
