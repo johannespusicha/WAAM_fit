@@ -9,7 +9,7 @@ if __name__ == '__main__':
         print('Please provide a path for the step file to process.\n')
         quit(0)
     InputPath = args[1]
-    OutputPath = 'out.txt'
+    OutputPath = ''
     option = ''
     for i in range(2, len(args)):
         if option == '':
