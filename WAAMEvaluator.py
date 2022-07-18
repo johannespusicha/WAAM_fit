@@ -7,6 +7,7 @@ import os, sys, random
 import tempfile
 import platform
 import subprocess
+from stl import mesh
 from polygonTester import PolygonTester
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -14,16 +15,11 @@ from mpl_toolkits.mplot3d import Axes3D
 gmsh.initialize()
 
 
-def evaluateSpheres(input, output, stepSize=0):
-    gmsh.model.occ.importShapes(input)
-    gmsh.model.occ.synchronize()
-    if stepSize != 0:
-        gmsh.model.mesh.setSize(gmsh.model.occ.getEntities(0), stepSize)
-    gmsh.model.mesh.generate(2)
-    nc, inz = __MshFromGmsh__()
+def evaluateSpheres(input, output, triangulationSizing=0):
+    nc, inz, N = getTriangulation(input, triangulationSizing)
     cnts = nc[inz].mean(axis=1)
 
-    r = getSphereRadii(nc, inz)
+    r = getSphereRadii(nc, inz, N)
     gradient = np.zeros_like(r)
     for i in range(gradient.shape[0]):
         neighbours = (np.isin(inz, inz[i]).sum(axis=1) == 2).nonzero()[0]
@@ -41,27 +37,49 @@ def evaluateSpheres(input, output, stepSize=0):
     grad_scaled[grad_scaled >= grad_scaled.max() * 0.95] = grad_scaled[btm_95_percent.nonzero()[0][grad_scaled[btm_95_percent].argmax()]]
     grad_scaled = grad_scaled / grad_scaled.max()
 
-    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, output + '_gradient.scad', colors=grad_scaled)
-    print('')
+    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, output + '_gradient.scad', colors=1-grad_scaled)
 
 
-def getSphereRadii(nc, inz):
-    faces = gmsh.model.getEntities(2)
+def getTriangulation(input, triangulationSizing=0):
+    if input.split('.')[-1] == 'stp' or input.split('.')[-1] == 'step':
+        gmsh.model.occ.importShapes(input)
+        gmsh.model.occ.synchronize()
+        if triangulationSizing != 0:
+            gmsh.model.mesh.setSize(gmsh.model.occ.getEntities(0), triangulationSizing)
+        gmsh.model.mesh.generate(2)
+        nc, inz, N = __MshFromGmsh__()
+    elif input.split('.')[-1] == 'stl':
+        meshObj = mesh.Mesh.from_file(input)
+        minEdLen = np.stack([np.linalg.norm(meshObj.v0 - meshObj.v1, axis=1),
+                             np.linalg.norm(meshObj.v0 - meshObj.v2, axis=1),
+                             np.linalg.norm(meshObj.v1 - meshObj.v2, axis=1)]).min()
+        ncRaw = np.vstack([meshObj.v0, meshObj.v1, meshObj.v2])
+        inz = np.arange(ncRaw.shape[0]).reshape((-1, 3))
+        pntIsRenamed = np.zeros(ncRaw.shape[0], dtype=bool)
+        nc = np.zeros([0, 3])
+        N = -meshObj.normals
+        N = N / np.tile(np.linalg.norm(N, axis=1), (3, 1)).T
+
+        for i in range(ncRaw.shape[0]):
+            if pntIsRenamed[i]:
+                continue
+            dists = np.linalg.norm(ncRaw - ncRaw[i], axis=1)
+            identicalPnts = (dists < minEdLen / 2).nonzero()[0]
+            pntIsRenamed[identicalPnts] = True
+            pntIsRenamed[i] = False
+            inz[np.isin(inz, identicalPnts)] = nc.shape[0]
+            nc = np.vstack([nc, ncRaw[i]])
+    else:
+        raise 'File format is not supported'
+    return nc, inz, N
+
+
+def getSphereRadii(nc, inz, N):
     cnts = nc[inz].mean(axis=1)
-    faceId = np.zeros(inz.shape[0], dtype=int)
-    N = np.zeros(inz.shape)
-    for i in range(inz.shape[0]):
-        minDst = np.inf
-        for face in faces:
-            dst = np.linalg.norm(gmsh.model.get_closest_point(2, face[1], cnts[i])[0] - cnts[i])
-            if dst < minDst:
-                minDst = dst
-                faceId[i] = face[1]
-        N[i] = -gmsh.model.getNormal(faceId[i], gmsh.model.getParametrization(2, faceId[i], cnts[i]))
 
     r = -np.ones(inz.shape[0])
     for i in range(inz.shape[0]):
-        f = lambda r: __evalRadius__(cnts[i], N[i], faceId[i], r)
+        f = lambda r: __evalRadius__(i, cnts, N, r)
         start = 2
         for j in range(10):
             start = start / 2
@@ -69,7 +87,6 @@ def getSphereRadii(nc, inz):
             if solObj['success']:
                 r[i] = solObj['x']
                 break
-    gmsh.model.remove()
     return r
 
 
@@ -83,20 +100,13 @@ def plotCurrentGeo():
         shell=False)
 
 
-def __evalRadius__(basePnt, N, excludedFace, r):
-    faces = gmsh.model.getEntities(2)
-    minDst = np.inf
-    cnt = basePnt + N * r
-    for face in faces:
-        if face[1] == excludedFace:
-            continue
-        x = gmsh.model.get_closest_point(2, face[1], cnt)[0]
-        uv = gmsh.model.getParametrization(2, face[1], x)
-        if gmsh.model.is_inside(2, face[1], uv, parametric=True) != 0:
-            dst = np.linalg.norm(x - cnt)
-            if dst < minDst:
-                minDst = dst
-    return r - minDst
+def __evalRadius__(index, cnts, N, r):
+    basePnt = cnts[index]
+    sphCnt = basePnt + N[index] * r
+    np.linalg.norm((sphCnt - cnts) * N, axis=1)
+    dsts = np.linalg.norm((basePnt - cnts) * N, axis=1)
+    dsts[index] = np.inf
+    return np.abs(dsts-r).min()
 
 
 def evaluateIslands(input, output, N=np.array([0, 0, 1]), stepSize=0):
@@ -157,15 +167,27 @@ def __MshFromGmsh__():
         rnodeCoords = gmsh.model.mesh.getNodes(i)[1]
         nodeCoords = np.append(nodeCoords, rnodeCoords)
     nc = nodeCoords.reshape(-1, 3)
-    elemTypes, elemTags, elemNodeTags = gmsh.model.mesh.getElements(2)
-    for i in range(len(elemTypes)):
-        elemTypes[i] = elemTypes[i].astype(int)
-        elemTags[i] = elemTags[i].astype(int)
-        elemNodeTags[i] = elemNodeTags[i].astype(int).reshape(elemTags[i].shape[0], -1) - 1
-    if len(elemTypes) == 0:
-        return np.zeros((0, 3)), np.zeros(0, dtype=int)
-    else:
-        return nc, elemNodeTags[0]
+    _, elemTags, elemNodeTags = gmsh.model.mesh.getElements(2)
+    elemTags = elemTags[0].astype(int)
+    inz = elemNodeTags[0].astype(int).reshape(elemTags.shape[0], -1) - 1
+
+
+    C = np.mean(nc[inz], axis=1)
+    faceIDs = np.zeros(inz.shape[0], dtype=int)
+    for entity in gmsh.model.getEntities(2):
+        ID = entity[1]
+        elemTagsOnFace = gmsh.model.mesh.getElements(2, ID)[1][0]
+        for tag in elemTagsOnFace:
+            faceIDs[elemTags == tag] = ID
+
+    N = np.cross(nc[inz[:, 1]] - nc[inz[:, 0]], nc[inz[:, 2]] - nc[inz[:, 0]])
+    for i in range(inz.shape[0]):
+        gmsh.model.mesh.getNodes(-1, -1, returnParametricCoord=True)
+        para = gmsh.model.getParametrization(2, faceIDs[i], C[i])
+        N[i] = gmsh.model.getNormal(faceIDs[i], para)
+        N[i] = N[i] / np.linalg.norm(N[i])
+
+    return nc, inz, N
 
 
 def __exportToOpenSCAD__(msh, outPath, elemNames=None, colors=None):

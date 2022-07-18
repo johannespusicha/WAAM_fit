@@ -11,11 +11,14 @@ if __name__ == '__main__':
     InputPath = args[1]
     OutputPath = ''
     option = ''
+    stepSize = 0
     for i in range(2, len(args)):
         if option == '':
             option = args[i]
         else:
             if option == '-o':
                 OutputPath = args[i]
+            elif option == '-s':
+                stepSize = float(args[i])
             option = ''
-    WAAMEvaluator.evaluateSpheres(InputPath, OutputPath)
+    WAAMEvaluator.evaluateSpheres(InputPath, OutputPath, stepSize)
