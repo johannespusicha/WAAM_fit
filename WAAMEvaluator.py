@@ -100,8 +100,8 @@ def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, n
     return nc, inz, N
 
 
-def getSphereRadii(nc, inz, N):
-    cnts = nc[inz].mean(axis=1)
+def getSphereRadii(nc: np.ndarray, inz: np.ndarray, N: np.ndarray) -> np.ndarray:
+    cnts = nc[inz].mean(axis=1)  # center points
 
     r = -np.ones(inz.shape[0])
     for i in range(inz.shape[0]):
