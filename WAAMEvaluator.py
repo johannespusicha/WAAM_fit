@@ -18,13 +18,13 @@ from typing import Tuple
 gmsh.initialize()
 
 
-def evaluateSpheres(input, output, triangulationSizing=0):
+def evaluateSpheres(input, output, triangulationSizing=0.0):
     """Evaluate all inner and outer spheres on given shape and save to output
 
     Args:
         input (string): Path to input shape
         output (string): Path to output shape
-        triangulationSizing (int, optional): controls size of triangulation. Defaults to 0 for auto-sizing.
+        triangulationSizing (float, optional): controls size of triangulation. Defaults to 0.0 for auto-sizing.
     """
     nc, inz, N = getTriangulation(input, triangulationSizing)
     cnts = nc[inz].mean(axis=1)
@@ -54,7 +54,7 @@ def evaluateSpheres(input, output, triangulationSizing=0):
         [2])}, output + '_gradient.scad', colors=1-grad_scaled)
 
 
-def getTriangulation(input: str, triangulationSizing=0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Create triangulation mesh on input file and return mesh characteristics
 
     Args:
@@ -64,6 +64,8 @@ def getTriangulation(input: str, triangulationSizing=0) -> Tuple[np.ndarray, np.
     Returns:
         Tuple[np.ndarray, np.ndarray, np.ndarray]: node_coordinates, element_node_tags, ?
     """
+    file_extension = input.split('.')[-1]
+    if file_extension in ['stp', 'step']:
         gmsh.model.occ.importShapes(input)
         gmsh.model.occ.synchronize()
         if triangulationSizing != 0:
@@ -72,7 +74,7 @@ def getTriangulation(input: str, triangulationSizing=0) -> Tuple[np.ndarray, np.
                 gmsh.model.occ.getEntities(0), triangulationSizing)
         gmsh.model.mesh.generate(2)
         nc, inz, N = __MshFromGmsh__()
-    elif input.split('.')[-1] == 'stl':
+    elif file_extension == 'stl':
         meshObj = mesh.Mesh.from_file(input)
         minEdLen = np.stack([np.linalg.norm(meshObj.v0 - meshObj.v1, axis=1),
                              np.linalg.norm(meshObj.v0 - meshObj.v2, axis=1),
@@ -202,7 +204,6 @@ def __MshFromGmsh__():
     _, elemTags, elemNodeTags = gmsh.model.mesh.getElements(2)
     elemTags = elemTags[0].astype(int)
     inz = elemNodeTags[0].astype(int).reshape(elemTags.shape[0], -1) - 1
-
 
     C = np.mean(nc[inz], axis=1)
     faceIDs = np.zeros(inz.shape[0], dtype=int)
