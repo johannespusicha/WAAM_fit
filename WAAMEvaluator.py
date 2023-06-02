@@ -238,7 +238,7 @@ def __MshFromGmsh__():
 def __exportToOpenSCAD__(msh, outPath, elemNames=None, colors=None):
     if colors is list:
         colors = np.array(colors)
-    if colors != None and colors.ndim == 1:
+    if colors is not None and colors.ndim == 1:
         colors = np.expand_dims(colors, 1)
 
     elemTypeShortNames = {2: 'Triangle', 3: 'Quad',
