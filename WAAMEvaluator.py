@@ -185,7 +185,7 @@ def __getMsh__(input):
     elif input[-3:] == 'stl':
         gmsh.open(input)
     else:
-        raise 'unknown format'
+        raise ValueError('unknown format')
     return __MshFromGmsh__()
 
 
