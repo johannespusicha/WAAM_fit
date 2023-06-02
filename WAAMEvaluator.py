@@ -24,7 +24,7 @@ def evaluateSpheres(input, output, triangulationSizing=0):
     Args:
         input (string): Path to input shape
         output (string): Path to output shape
-        triangulationSizing (int, optional): controls size of triangulation. Defaults to 0 for auto-sizing.
+        triangulationSizing (float, optional): controls size of triangulation. Defaults to 0.0 for auto-sizing.
     """
     nc, inz, N = getTriangulation(input, triangulationSizing)
     cnts = nc[inz].mean(axis=1)
