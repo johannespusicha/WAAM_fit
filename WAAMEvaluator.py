@@ -138,7 +138,7 @@ def __evalRadius__(index, cnts, N, r):
 
 
 def evaluateIslands(input, output, N=np.array([0, 0, 1]), stepSize=0):
-    nc, inz = __getMsh__(input)
+    nc, inz, _ = __getMsh__(input)
     bb = np.reshape(gmsh.model.getBoundingBox(-1, -1), (2, 3))
     cnt = bb.mean(axis=0)
     N = N / np.linalg.norm(N)
