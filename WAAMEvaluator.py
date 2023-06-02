@@ -202,8 +202,9 @@ def __MshFromGmsh__():
         nodeCoords = np.append(nodeCoords, rnodeCoords)
     nc = nodeCoords.reshape(-1, 3)
     _, elemTags, elemNodeTags = gmsh.model.mesh.getElements(2)
-    elemTags = elemTags[0].astype(int)
-    inz = elemNodeTags[0].astype(int).reshape(elemTags.shape[0], -1) - 1
+    elemTags = elemTags[0].astype(int)  # type: ignore
+    inz = elemNodeTags[0].astype(int).reshape(
+        elemTags.shape[0], -1) - 1  # type: ignore
 
     C = np.mean(nc[inz], axis=1)
     faceIDs = np.zeros(inz.shape[0], dtype=int)
@@ -315,6 +316,6 @@ def plotSolid(nc, inz, value, autoLaunch=True):
         if platform.system() == 'Darwin':
             subprocess.call(('open', scadPath))
         elif platform.system() == 'Windows':
-            os.startfile(scadPath)
+            os.startfile(scadPath)  # type: ignore
         else:
             subprocess.call(('xdg-open', scadPath))
