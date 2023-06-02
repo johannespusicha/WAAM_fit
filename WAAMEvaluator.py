@@ -203,8 +203,8 @@ def __MshFromGmsh__():
     nc = nodeCoords.reshape(-1, 3)
     _, elemTags, elemNodeTags = gmsh.model.mesh.getElements(2)
     elemTags = elemTags[0].astype(int)  # type: ignore
-    inz = elemNodeTags[0].astype(int).reshape(
-        elemTags.shape[0], -1) - 1  # type: ignore
+    inz = elemNodeTags[0].astype(int).reshape(  # type: ignore
+        elemTags.shape[0], -1) - 1
 
     C = np.mean(nc[inz], axis=1)
     faceIDs = np.zeros(inz.shape[0], dtype=int)
