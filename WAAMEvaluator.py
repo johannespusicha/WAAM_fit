@@ -54,12 +54,12 @@ def evaluateSpheres(input, output, triangulationSizing=0):
         [2])}, output + '_gradient.scad', colors=1-grad_scaled)
 
 
-def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def getTriangulation(input: str, triangulationSizing=0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Create triangulation mesh on input file and return mesh characteristics
 
     Args:
         input (string): file name with path (either .step/.stp or .stl are supported)
-        triangulationSizing (int, optional): _description_. Defaults to 0 for auto-sizing.
+        triangulationSizing (float, optional): Controls mesh-sizing. Defaults to 0.0 for auto-sizing.
 
     Returns:
         Tuple[np.ndarray, np.ndarray, np.ndarray]: node_coordinates, element_node_tags, ?
