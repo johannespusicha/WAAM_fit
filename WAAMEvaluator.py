@@ -96,7 +96,7 @@ def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, n
             inz[np.isin(inz, identicalPnts)] = nc.shape[0]
             nc = np.vstack([nc, ncRaw[i]])
     else:
-        raise 'File format is not supported'
+        raise ValueError('File format is not supported')
     return nc, inz, N
 
 
