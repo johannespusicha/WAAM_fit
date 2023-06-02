@@ -3,7 +3,9 @@ import numpy as np
 import pickle
 from copy import deepcopy
 from scipy.optimize import root
-import os, sys, random
+import os
+import sys
+import random
 import tempfile
 import platform
 import subprocess
@@ -30,21 +32,25 @@ def evaluateSpheres(input, output, triangulationSizing=0):
     gradient = np.zeros_like(r)
     for i in range(gradient.shape[0]):
         neighbours = (np.isin(inz, inz[i]).sum(axis=1) == 2).nonzero()[0]
-        neighbours = neighbours[r[neighbours] != -1] #neglect invalid radii
-        gradient[i] = np.linalg.norm((r[i] - r[neighbours]) / np.linalg.norm(cnts[neighbours] - cnts[i], axis=1))
+        neighbours = neighbours[r[neighbours] != -1]  # neglect invalid radii
+        gradient[i] = np.linalg.norm(
+            (r[i] - r[neighbours]) / np.linalg.norm(cnts[neighbours] - cnts[i], axis=1))
     r_scaled = r/r.max()
     grad_scaled = gradient - gradient.min()
 
     if not os.path.exists(os.path.dirname(output)):
         os.mkdir(os.path.dirname(output))
 
-    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, output + '_r.scad', colors=r_scaled)
+    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array(
+        [2])}, output + '_r.scad', colors=r_scaled)
 
     btm_95_percent = (grad_scaled < grad_scaled.max() * 0.95)
-    grad_scaled[grad_scaled >= grad_scaled.max() * 0.95] = grad_scaled[btm_95_percent.nonzero()[0][grad_scaled[btm_95_percent].argmax()]]
+    grad_scaled[grad_scaled >= grad_scaled.max(
+    ) * 0.95] = grad_scaled[btm_95_percent.nonzero()[0][grad_scaled[btm_95_percent].argmax()]]
     grad_scaled = grad_scaled / grad_scaled.max()
 
-    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, output + '_gradient.scad', colors=1-grad_scaled)
+    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array(
+        [2])}, output + '_gradient.scad', colors=1-grad_scaled)
 
 
 def getTriangulation(input, triangulationSizing=0) -> tuple[int, int, int]:
@@ -96,7 +102,7 @@ def getSphereRadii(nc, inz, N):
 
     r = -np.ones(inz.shape[0])
     for i in range(inz.shape[0]):
-        f = lambda r: __evalRadius__(i, cnts, N, r)
+        def f(r): return __evalRadius__(i, cnts, N, r)
         start = 2
         for j in range(10):
             start = start / 2
@@ -110,10 +116,12 @@ def getSphereRadii(nc, inz, N):
 def plotCurrentGeo():
     fp = os.path.join(tempfile.gettempdir(), '0') + '.step'
     while os.path.exists(fp):
-        fp = os.path.join(tempfile.gettempdir(), str(random.randint(0, 10 ** 6))) + '.step'
+        fp = os.path.join(tempfile.gettempdir(), str(
+            random.randint(0, 10 ** 6))) + '.step'
     gmsh.write(fp)
     subprocess.Popen(
-        [sys.executable, os.path.join(os.path.abspath(os.getcwd()), 'GmshPlotter.py'), fp],
+        [sys.executable, os.path.join(os.path.abspath(
+            os.getcwd()), 'GmshPlotter.py'), fp],
         shell=False)
 
 
@@ -150,19 +158,20 @@ def __getSlice(nc, inz, X, N):
     edOut = np.array([0, 2], dtype=int)
 
     for i in range(inz.shape[0]):
-            trgNodeDir = np.sign(np.inner(X - nc[inz[i]], N))
-            if not (trgNodeDir == trgNodeDir[0]).all(): #Is triangle is cut by plane X, N?
-                A = nc[inz[i, 0]]
-                B = nc[inz[i, 1]]
-                C = nc[inz[i, 2]]
+        trgNodeDir = np.sign(np.inner(X - nc[inz[i]], N))
+        # Is triangle is cut by plane X, N?
+        if not (trgNodeDir == trgNodeDir[0]).all():
+            A = nc[inz[i, 0]]
+            B = nc[inz[i, 1]]
+            C = nc[inz[i, 2]]
 
-                if trgNodeDir[0] == trgNodeDir[1]:
-                    print('') #ToDo: complete
-                elif trgNodeDir[0] == trgNodeDir[2]:
-                    print('') #ToDo: complete
+            if trgNodeDir[0] == trgNodeDir[1]:
+                print('')  # ToDo: complete
+            elif trgNodeDir[0] == trgNodeDir[2]:
+                print('')  # ToDo: complete
 
-                elif trgNodeDir[1] == trgNodeDir[2]:
-                    print('') #ToDo: complete
+            elif trgNodeDir[1] == trgNodeDir[2]:
+                print('')  # ToDo: complete
     print('')
 
 
@@ -218,8 +227,10 @@ def __exportToOpenSCAD__(msh, outPath, elemNames=None, colors=None):
     if colors.ndim == 1:
         colors = np.expand_dims(colors, 1)
 
-    elemTypeShortNames = {2: 'Triangle', 3: 'Quad', 4: 'Tetrahedron', 5: 'Hexahedron', 6: 'Prism', 7: 'Pyramid'}
-    elemColors = {2: 'red', 3: 'blue', 4: 'blue', 5: 'red', 6: 'green', 7: 'yellow'}
+    elemTypeShortNames = {2: 'Triangle', 3: 'Quad',
+                          4: 'Tetrahedron', 5: 'Hexahedron', 6: 'Prism', 7: 'Pyramid'}
+    elemColors = {2: 'red', 3: 'blue', 4: 'blue',
+                  5: 'red', 6: 'green', 7: 'yellow'}
 
     fileContent = ['//Mesh exported using MeshTools.exportToOpenSCAD\n']
 
@@ -245,7 +256,8 @@ def __exportToOpenSCAD__(msh, outPath, elemNames=None, colors=None):
             fileContent += ['\n' + elemName + ' = [\n']
             cnt = msh['nc'][inz[0]].mean(axis=0)
             for face in etFaces:
-                N = np.cross(nc[inz[i, face[1]]] - nc[inz[i, face[0]]], nc[inz[i, face[2]]] - nc[inz[i, face[1]]])
+                N = np.cross(nc[inz[i, face[1]]] - nc[inz[i, face[0]]],
+                             nc[inz[i, face[2]]] - nc[inz[i, face[1]]])
                 if np.inner(np.mean(nc[inz[i, face]], axis=0) - cnt, N) > 0:
                     fileContent += [str(inz[i, face].tolist()) + ',']
                 else:
@@ -255,16 +267,20 @@ def __exportToOpenSCAD__(msh, outPath, elemNames=None, colors=None):
 
             fileContent += ['//[' + str(inz[i].tolist()) + ']\n']
             if colors is None:
-                fileContent += ['color("' + elemColors[et] + '") polyhedron( Points, ' + elemName + ' );\n']
+                fileContent += ['color("' + elemColors[et] +
+                                '") polyhedron( Points, ' + elemName + ' );\n']
             else:
                 if colors.shape[1] == 3:
-                    colorEntry = '[' + str(colors[e, 0]) + ', ' + str(colors[e, 0]) + ', ' + str(1 - colors[e]) + ']'
+                    colorEntry = '[' + str(colors[e, 0]) + ', ' + \
+                        str(colors[e, 0]) + ', ' + str(1 - colors[e]) + ']'
                 else:
                     if colors[e] >= 0:
-                        colorEntry = '[' + str(colors[e, 0]) + ', 0., ' + str(1 - colors[e, 0]) + ']'
+                        colorEntry = '[' + str(colors[e, 0]) + \
+                            ', 0., ' + str(1 - colors[e, 0]) + ']'
                     else:
                         colorEntry = '[1., 1., 1.]'
-                fileContent += ['color(' + colorEntry + ') polyhedron( Points, ' + elemName + ' );\n']
+                fileContent += ['color(' + colorEntry +
+                                ') polyhedron( Points, ' + elemName + ' );\n']
             e = e + 1
 
     fileContent += ['LineWidth = 0.03;\n']
@@ -291,7 +307,8 @@ def plotSolid(nc, inz, value, autoLaunch=True):
     for i in range(inz.shape[0]):
         clormap[i] = '[' + str(value[i]) + ', 0., ' + str(1 - value[i]) + ']'
 
-    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, scadPath, value)
+    __exportToOpenSCAD__(
+        {'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, scadPath, value)
     if autoLaunch:
         if platform.system() == 'Darwin':
             subprocess.call(('open', scadPath))
