@@ -13,6 +13,7 @@ from stl import mesh
 from polygonTester import PolygonTester
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from typing import Tuple
 
 gmsh.initialize()
 
@@ -53,7 +54,7 @@ def evaluateSpheres(input, output, triangulationSizing=0):
         [2])}, output + '_gradient.scad', colors=1-grad_scaled)
 
 
-def getTriangulation(input, triangulationSizing=0) -> tuple[int, int, int]:
+def getTriangulation(input: str, triangulationSizing=0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Create triangulation mesh on input file and return mesh characteristics
 
     Args:
@@ -61,7 +62,7 @@ def getTriangulation(input, triangulationSizing=0) -> tuple[int, int, int]:
         triangulationSizing (int, optional): _description_. Defaults to 0 for auto-sizing.
 
     Returns:
-        tuple[int, int, int]: node_coordinates, element_node_tags, ?
+        Tuple[np.ndarray, np.ndarray, np.ndarray]: node_coordinates, element_node_tags, ?
     """
         gmsh.model.occ.importShapes(input)
         gmsh.model.occ.synchronize()
@@ -190,7 +191,7 @@ def __MshFromGmsh__():
     """Do unknown operation
 
     Returns:
-        tuple: nodeCoordinates(int), elementNodeTags(int), ?(int)
+        tuple: nodeCoordinates(np.ndarray), elementNodeTags(np.ndarray), ?(np.ndarray)
     """
     nodeCoords = np.array([], dtype=float)
     gmsh.model.mesh.renumber_nodes()
