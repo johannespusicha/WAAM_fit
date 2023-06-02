@@ -16,6 +16,13 @@ gmsh.initialize()
 
 
 def evaluateSpheres(input, output, triangulationSizing=0):
+    """Evaluate all inner and outer spheres on given shape and save to output
+
+    Args:
+        input (string): Path to input shape
+        output (string): Path to output shape
+        triangulationSizing (int, optional): controls size of triangulation. Defaults to 0 for auto-sizing.
+    """
     nc, inz, N = getTriangulation(input, triangulationSizing)
     cnts = nc[inz].mean(axis=1)
 
@@ -40,12 +47,22 @@ def evaluateSpheres(input, output, triangulationSizing=0):
     __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, output + '_gradient.scad', colors=1-grad_scaled)
 
 
-def getTriangulation(input, triangulationSizing=0):
-    if input.split('.')[-1] == 'stp' or input.split('.')[-1] == 'step':
+def getTriangulation(input, triangulationSizing=0) -> tuple[int, int, int]:
+    """Create triangulation mesh on input file and return mesh characteristics
+
+    Args:
+        input (string): file name with path (either .step/.stp or .stl are supported)
+        triangulationSizing (int, optional): _description_. Defaults to 0 for auto-sizing.
+
+    Returns:
+        tuple[int, int, int]: node_coordinates, element_node_tags, ?
+    """
         gmsh.model.occ.importShapes(input)
         gmsh.model.occ.synchronize()
         if triangulationSizing != 0:
-            gmsh.model.mesh.setSize(gmsh.model.occ.getEntities(0), triangulationSizing)
+            gmsh.model.mesh.setSize(
+                # Pass mesh sizing trough to points (entities with dimension 0)
+                gmsh.model.occ.getEntities(0), triangulationSizing)
         gmsh.model.mesh.generate(2)
         nc, inz, N = __MshFromGmsh__()
     elif input.split('.')[-1] == 'stl':
@@ -161,6 +178,11 @@ def __getMsh__(input):
 
 
 def __MshFromGmsh__():
+    """Do unknown operation
+
+    Returns:
+        tuple: nodeCoordinates(int), elementNodeTags(int), ?(int)
+    """
     nodeCoords = np.array([], dtype=float)
     gmsh.model.mesh.renumber_nodes()
     for i in range(0, 3):
