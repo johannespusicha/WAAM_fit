@@ -27,9 +27,9 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
         triangulationSizing (float, optional): controls size of triangulation. Defaults to 0.0 for auto-sizing.
     """
     nc, inz, N = getTriangulation(input, triangulationSizing)
-    cnts = nc[inz].mean(axis=1)
+    cnts = nc[inz].mean(axis=1)  # center_points
 
-    r = getSphereRadii(nc, inz, N)
+    r = getSphereRadii(nc, inz, N)  # radii
     gradient = np.zeros_like(r)
     for i in range(gradient.shape[0]):
         neighbours = (np.isin(inz, inz[i]).sum(axis=1) == 2).nonzero()[0]
@@ -55,14 +55,15 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
 
 
 def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Create triangulation mesh on input file and return mesh characteristics
+    """Create triangulation mesh on input file and return mesh
 
+    The mesh will be returned as BREP (boundary representation) with the node coordinates, the inzidenz_matrix (which gives the relation between nodes and edges) and ?
     Args:
         input (string): file name with path (either .step/.stp or .stl are supported)
         triangulationSizing (float, optional): Controls mesh-sizing. Defaults to 0.0 for auto-sizing.
 
     Returns:
-        Tuple[np.ndarray, np.ndarray, np.ndarray]: node_coordinates, element_node_tags, ?
+        Tuple[np.ndarray, np.ndarray, np.ndarray]: node_coordinates, inzidenz_matrix, vector?
     """
     file_extension = input.split('.')[-1]
     if file_extension in ['stp', 'step']:
@@ -101,6 +102,16 @@ def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, n
 
 
 def getSphereRadii(nc: np.ndarray, inz: np.ndarray, N: np.ndarray) -> np.ndarray:
+    """Computes all radii of all spheres, indicated by the centers of the coordinate nodes. Invalid radii have the value -1.
+
+    Args:
+        nc (np.ndarray): Array with node coordinates
+        inz (np.ndarray): Inzidenz matrix or vector?
+        N (np.ndarray): Vector with unknown meaning
+
+    Returns:
+        np.ndarray: Vector with computed radii. Default values are -1. Values will only be changed, if a radius was sucessfully computed.
+    """
     cnts = nc[inz].mean(axis=1)  # center points
 
     r = -np.ones(inz.shape[0])
