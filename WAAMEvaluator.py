@@ -51,12 +51,23 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
     __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, output + '_gradient.scad', colors=1-grad_scaled)
 
     _, elementTags, __ = gmsh.model.mesh.getElements(2)
-    __view_in_gmsh__(elementTags[0].tolist(), r_scaled.tolist(), "Sphere Radii")
-    __view_in_gmsh__(elementTags[0].tolist(), grad_scaled.tolist(), "Radii Gradients")
+
+    views = []
+    views.append(__add_as_view_to_gmsh__(elementTags[0].tolist(), r_scaled.tolist(), "Sphere Radii"))
+    views.append(__add_as_view_to_gmsh__(elementTags[0].tolist(), grad_scaled.tolist(), "Radii Gradients"))
+
+    for v in views:
+        # Set a green to blue color map as the ColorTable = {Green, Red} option is not yet available in API
+        gmsh.view.option.set_number(v, "ColormapNumber", 17)
+        gmsh.view.option.set_number(v, "ColormapSwap", 1)
+
+    # Show last view by default:
+    gmsh.view.option.set_number(views[-1], "Visible", 1)
 
     gmsh.fltk.initialize()
     while gmsh.fltk.is_available():
         gmsh.fltk.wait()
+    gmsh.finalize()
 
 
 def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -337,10 +348,10 @@ def plotSolid(nc, inz, value, autoLaunch=True):
             subprocess.call(('xdg-open', scadPath))
 
 
-def __view_in_gmsh__(tags, data, view_name):
+def __add_as_view_to_gmsh__(tags, data, view_name):
     """
     """
     view = gmsh.view.add(view_name)
-    gmsh.view.option.set_number(view, "ColormapNumber", 17)
-    gmsh.view.option.set_number(view, "ColormapSwap", 1)
     gmsh.view.add_homogeneous_model_data(view, 0, "", "ElementData", tags=tags, data=data, numComponents=1)
+    gmsh.view.option.set_number(view, "Visible", 0)
+    return view
