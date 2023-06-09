@@ -42,13 +42,9 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
     if not os.path.exists(os.path.dirname(output)):
         os.mkdir(os.path.dirname(output))
 
-    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, output + '_r.scad', colors=r_scaled)
-
     btm_95_percent = (grad_scaled < grad_scaled.max() * 0.95)
     grad_scaled[grad_scaled >= grad_scaled.max() * 0.95] = grad_scaled[btm_95_percent.nonzero()[0][grad_scaled[btm_95_percent].argmax()]]
     grad_scaled = grad_scaled / grad_scaled.max()
-
-    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, output + '_gradient.scad', colors=1-grad_scaled)
 
     _, elementTags, __ = gmsh.model.mesh.getElements(2)
 
@@ -60,10 +56,15 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
         # Set a green to blue color map as the ColorTable = {Green, Red} option is not yet available in API
         gmsh.view.option.set_number(v, "ColormapNumber", 17)
         gmsh.view.option.set_number(v, "ColormapSwap", 1)
+        
+        # Save views:
+        file_names = ["radii_scaled", "gradient_scaled"]
+        gmsh.view.write(v, output + file_names.pop() + ".msh")
 
     # Show last view by default:
     gmsh.view.option.set_number(views[-1], "Visible", 1)
 
+    # Open gmsh GUI
     gmsh.fltk.initialize()
     while gmsh.fltk.is_available():
         gmsh.fltk.wait()
