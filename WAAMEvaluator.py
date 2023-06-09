@@ -53,8 +53,8 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
     _, elementTags, __ = gmsh.model.mesh.getElements(2)
 
     views = []
-    views.append(__add_as_view_to_gmsh__(elementTags[0].tolist(), r_scaled.tolist(), "Sphere Radii"))
-    views.append(__add_as_view_to_gmsh__(elementTags[0].tolist(), grad_scaled.tolist(), "Radii Gradients"))
+    views.append(__add_as_view_to_gmsh__(elementTags[0].tolist(), r_scaled.tolist(), "Sphere Radii")) # type: ignore
+    views.append(__add_as_view_to_gmsh__(elementTags[0].tolist(), grad_scaled.tolist(), "Radii Gradients")) # type: ignore
 
     for v in views:
         # Set a green to blue color map as the ColorTable = {Green, Red} option is not yet available in API
