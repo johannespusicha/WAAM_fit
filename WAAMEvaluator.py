@@ -39,18 +39,18 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
     r_scaled = r/r.max()
     grad_scaled = gradient - gradient.min()
 
-    if not os.path.exists(os.path.dirname(output)):
-        os.mkdir(os.path.dirname(output))
-
     btm_95_percent = (grad_scaled < grad_scaled.max() * 0.95)
     grad_scaled[grad_scaled >= grad_scaled.max() * 0.95] = grad_scaled[btm_95_percent.nonzero()[0][grad_scaled[btm_95_percent].argmax()]]
     grad_scaled = grad_scaled / grad_scaled.max()
 
+    # Save and show data in gmsh GUI:
     _, elementTags, __ = gmsh.model.mesh.getElements(2)
-
     views = []
     views.append(__add_as_view_to_gmsh__(elementTags[0].tolist(), r_scaled.tolist(), "Sphere Radii")) # type: ignore
     views.append(__add_as_view_to_gmsh__(elementTags[0].tolist(), grad_scaled.tolist(), "Radii Gradients")) # type: ignore
+
+    if not os.path.exists(os.path.dirname(output)):
+        os.mkdir(os.path.dirname(output))
 
     for v in views:
         # Set a green to blue color map as the ColorTable = {Green, Red} option is not yet available in API
@@ -64,7 +64,6 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
     # Show last view by default:
     gmsh.view.option.set_number(views[-1], "Visible", 1)
 
-    # Open gmsh GUI
     gmsh.fltk.initialize()
     while gmsh.fltk.is_available():
         gmsh.fltk.wait()
