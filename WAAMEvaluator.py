@@ -42,13 +42,13 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
     if not os.path.exists(os.path.dirname(output)):
         os.mkdir(os.path.dirname(output))
 
-    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array(
-        [2])}, output + '_r.scad', colors=r_scaled)
+    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, output + '_r.scad', colors=r_scaled)
 
     btm_95_percent = (grad_scaled < grad_scaled.max() * 0.95)
-    grad_scaled[grad_scaled >= grad_scaled.max(
-    ) * 0.95] = grad_scaled[btm_95_percent.nonzero()[0][grad_scaled[btm_95_percent].argmax()]]
+    grad_scaled[grad_scaled >= grad_scaled.max() * 0.95] = grad_scaled[btm_95_percent.nonzero()[0][grad_scaled[btm_95_percent].argmax()]]
     grad_scaled = grad_scaled / grad_scaled.max()
+
+    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array([2])}, output + '_gradient.scad', colors=1-grad_scaled)
 
     _, elementTags, __ = gmsh.model.mesh.getElements(2)
     __view_in_gmsh__(elementTags[0].tolist(), r_scaled.tolist(), "Sphere Radii")
