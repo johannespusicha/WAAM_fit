@@ -1,4 +1,5 @@
 __pycache__/*
 ressources/
 .vscode/
-output/
+output/*
+examples/*

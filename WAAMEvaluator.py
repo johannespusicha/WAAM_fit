@@ -39,19 +39,35 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
     r_scaled = r/r.max()
     grad_scaled = gradient - gradient.min()
 
+    btm_95_percent = (grad_scaled < grad_scaled.max() * 0.95)
+    grad_scaled[grad_scaled >= grad_scaled.max() * 0.95] = grad_scaled[btm_95_percent.nonzero()[0][grad_scaled[btm_95_percent].argmax()]]
+    grad_scaled = grad_scaled / grad_scaled.max()
+
+    # Save and show data in gmsh GUI:
+    _, elementTags, __ = gmsh.model.mesh.getElements(2)
+    views = []
+    views.append(__add_as_view_to_gmsh__(elementTags[0].tolist(), r_scaled.tolist(), "Sphere Radii")) # type: ignore
+    views.append(__add_as_view_to_gmsh__(elementTags[0].tolist(), grad_scaled.tolist(), "Radii Gradients")) # type: ignore
+
     if not os.path.exists(os.path.dirname(output)):
         os.mkdir(os.path.dirname(output))
 
-    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array(
-        [2])}, output + '_r.scad', colors=r_scaled)
+    for v in views:
+        # Set a green to blue color map as the ColorTable = {Green, Red} option is not yet available in API
+        gmsh.view.option.set_number(v, "ColormapNumber", 17)
+        gmsh.view.option.set_number(v, "ColormapSwap", 1)
+        
+        # Save views:
+        file_names = ["radii_scaled", "gradient_scaled"]
+        gmsh.view.write(v, output + file_names.pop() + ".msh")
 
-    btm_95_percent = (grad_scaled < grad_scaled.max() * 0.95)
-    grad_scaled[grad_scaled >= grad_scaled.max(
-    ) * 0.95] = grad_scaled[btm_95_percent.nonzero()[0][grad_scaled[btm_95_percent].argmax()]]
-    grad_scaled = grad_scaled / grad_scaled.max()
+    # Show last view by default:
+    gmsh.view.option.set_number(views[-1], "Visible", 1)
 
-    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array(
-        [2])}, output + '_gradient.scad', colors=1-grad_scaled)
+    gmsh.fltk.initialize()
+    while gmsh.fltk.is_available():
+        gmsh.fltk.wait()
+    gmsh.finalize()
 
 
 def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -330,3 +346,12 @@ def plotSolid(nc, inz, value, autoLaunch=True):
             os.startfile(scadPath)  # type: ignore
         else:
             subprocess.call(('xdg-open', scadPath))
+
+
+def __add_as_view_to_gmsh__(tags, data, view_name):
+    """
+    """
+    view = gmsh.view.add(view_name)
+    gmsh.view.add_homogeneous_model_data(view, 0, "", "ElementData", tags=tags, data=data, numComponents=1)
+    gmsh.view.option.set_number(view, "Visible", 0)
+    return view
