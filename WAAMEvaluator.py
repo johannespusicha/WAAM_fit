@@ -50,8 +50,13 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
     ) * 0.95] = grad_scaled[btm_95_percent.nonzero()[0][grad_scaled[btm_95_percent].argmax()]]
     grad_scaled = grad_scaled / grad_scaled.max()
 
-    __exportToOpenSCAD__({'nc': nc, 'inz': [inz], 'elemTypes': np.array(
-        [2])}, output + '_gradient.scad', colors=1-grad_scaled)
+    _, elementTags, __ = gmsh.model.mesh.getElements(2)
+    __view_in_gmsh__(elementTags[0].tolist(), r_scaled.tolist(), "Sphere Radii")
+    __view_in_gmsh__(elementTags[0].tolist(), grad_scaled.tolist(), "Radii Gradients")
+
+    gmsh.fltk.initialize()
+    while gmsh.fltk.is_available():
+        gmsh.fltk.wait()
 
 
 def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -330,3 +335,12 @@ def plotSolid(nc, inz, value, autoLaunch=True):
             os.startfile(scadPath)  # type: ignore
         else:
             subprocess.call(('xdg-open', scadPath))
+
+
+def __view_in_gmsh__(tags, data, view_name):
+    """
+    """
+    view = gmsh.view.add(view_name)
+    gmsh.view.option.set_number(view, "ColormapNumber", 17)
+    gmsh.view.option.set_number(view, "ColormapSwap", 1)
+    gmsh.view.add_homogeneous_model_data(view, 0, "", "ElementData", tags=tags, data=data, numComponents=1)
