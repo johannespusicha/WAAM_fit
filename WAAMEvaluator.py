@@ -157,8 +157,6 @@ def plotCurrentGeo():
 
 def __evalRadius__(index, cnts, N, r):
     basePnt = cnts[index]
-    sphCnt = basePnt + N[index] * r
-    np.linalg.norm((sphCnt - cnts) * N, axis=1)
     dsts = np.linalg.norm((basePnt - cnts) * N, axis=1)
     dsts[index] = np.inf
     return np.abs(dsts-r).min()
