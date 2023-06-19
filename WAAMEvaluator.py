@@ -1,7 +1,5 @@
 import gmsh
 import numpy as np
-import pickle
-from copy import deepcopy
 from scipy.optimize import root
 import os
 import sys
@@ -10,9 +8,6 @@ import tempfile
 import platform
 import subprocess
 from stl import mesh
-from polygonTester import PolygonTester
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from typing import Tuple
 
 gmsh.initialize()
