@@ -162,9 +162,9 @@ def plotCurrentGeo():
         float: distance
     """
     basePnt = cnts[index]
-    dsts = np.linalg.norm((basePnt - cnts) * N, axis=1)
-    dsts[index] = np.inf
-    return np.abs(dsts-r).min()
+    distances = np.linalg.norm((basePnt - cnts) * N, axis=1)
+    distances[index] = np.inf
+    return np.abs(distances-r).min()
 
 
 def evaluateIslands(input, output, N=np.array([0, 0, 1]), stepSize=0):
