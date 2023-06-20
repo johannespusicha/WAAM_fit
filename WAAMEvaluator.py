@@ -150,7 +150,17 @@ def plotCurrentGeo():
         shell=False)
 
 
-def __evalRadius__(index, cnts, N, r):
+    """Computes the distance from the point at index (current base point) to the center point other than index closest to a Heuver's sphere of radius r to the base point.
+
+    Args:
+        index (integer): index of current base point
+        cnts (np.ndarray): nx3 matrix of center points 
+        N (np.ndarray): nx3 matrix of normal vectors
+        r (float): radius
+
+    Returns:
+        float: distance
+    """
     basePnt = cnts[index]
     dsts = np.linalg.norm((basePnt - cnts) * N, axis=1)
     dsts[index] = np.inf
