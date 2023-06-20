@@ -118,7 +118,7 @@ def getSphereRadii(nc: np.ndarray, inz: np.ndarray, N: np.ndarray) -> np.ndarray
     Args:
         nc (np.ndarray): Array with node coordinates
         inz (np.ndarray): Inzidenz matrix or vector?
-        N (np.ndarray): Vector with unknown meaning
+        N (np.ndarray): Normalvector
 
     Returns:
         np.ndarray: Vector with computed radii. Default values are -1. Values will only be changed, if a radius was sucessfully computed.
