@@ -19,6 +19,14 @@ impl Vector3D {
     pub fn length(&self) -> f64 {
         (self.i * self.i + self.j * self.j + self.k * self.k).sqrt()
     }
+
+    pub fn to_array(self) -> [f64; 3] {
+        [self.i, self.j, self.k]
+    }
+
+    pub fn dot(&self, other: &Vector3D) -> f64 {
+        self.i * other.i + self.j * other.j + self.k * other.k
+    }
 }
 
 impl Add for Vector3D {
@@ -81,5 +89,19 @@ mod brep_element_tests {
     fn test_vector_length() {
         let v = Vector3D::new(2.0, 3.0, 4.0);
         assert_eq!(v.length(), 29.0_f64.sqrt())
+    }
+
+    #[test]
+    fn test_vector_to_array() {
+        let v = Vector3D::new(2.0, 3.0, 4.0);
+        assert_eq!(v.to_array(), [2.0, 3.0, 4.0])
+    }
+
+    #[test]
+    fn test_dot_product() {
+        let v1 = Vector3D::new(1, 0, 0);
+        let v2 = Vector3D::new(2, 2, 2);
+
+        assert_eq!(v1.dot(&v2), 2.0);
     }
 }
