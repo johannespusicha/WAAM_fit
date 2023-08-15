@@ -3,3 +3,7 @@ ressources/
 .vscode/
 output/*
 examples/*
+
+# Rust:
+/rust-methods/target
+/rust-methods/Cargo.lock
