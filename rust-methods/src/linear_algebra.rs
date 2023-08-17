@@ -12,7 +12,7 @@ pub struct Vector3D {
 
 impl Vector3D {
     pub fn new(i: impl Into<f64>, j: impl Into<f64>, k: impl Into<f64>) -> Self {
-        Vector3D {
+        Self {
             i: i.into(),
             j: j.into(),
             k: k.into(),
@@ -20,15 +20,16 @@ impl Vector3D {
     }
 
     pub fn length(&self) -> f64 {
-        (self.i * self.i + self.j * self.j + self.k * self.k).sqrt()
+        (self.dot(self)).sqrt()
     }
 
-    pub fn to_array(self) -> [f64; 3] {
+    pub const fn to_array(self) -> [f64; 3] {
         [self.i, self.j, self.k]
     }
 
-    pub fn dot(&self, other: &Vector3D) -> f64 {
-        self.i * other.i + self.j * other.j + self.k * other.k
+    pub fn dot(&self, other: &Self) -> f64 {
+        self.i
+            .mul_add(other.i, self.j.mul_add(other.j, self.k * other.k))
     }
 
     pub fn distance_to(&self, b: &Self) -> f64 {
@@ -53,9 +54,9 @@ where
 
 impl<B> Add<B> for Vector3D
 where
-    B: Borrow<Vector3D>,
+    B: Borrow<Self>,
 {
-    type Output = Vector3D;
+    type Output = Self;
 
     fn add(self, rhs: B) -> Self::Output {
         &self + rhs
@@ -79,9 +80,9 @@ where
 
 impl<B> Sub<B> for Vector3D
 where
-    B: Borrow<Vector3D>,
+    B: Borrow<Self>,
 {
-    type Output = Vector3D;
+    type Output = Self;
     fn sub(self, rhs: B) -> Self::Output {
         &self - rhs
     }
@@ -91,11 +92,11 @@ impl<T> Mul<T> for Vector3D
 where
     T: Into<f64>,
 {
-    type Output = Vector3D;
+    type Output = Self;
 
-    fn mul(self, scalar: T) -> Vector3D {
+    fn mul(self, scalar: T) -> Self {
         let scalar_f64: f64 = scalar.into();
-        Vector3D {
+        Self {
             i: self.i * scalar_f64,
             j: self.j * scalar_f64,
             k: self.k * scalar_f64,
