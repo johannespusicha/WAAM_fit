@@ -4,7 +4,7 @@ use std::{
 };
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-struct Vector3D {
+pub struct Vector3D {
     i: f64,
     j: f64,
     k: f64,
