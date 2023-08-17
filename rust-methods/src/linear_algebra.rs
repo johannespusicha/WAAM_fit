@@ -30,6 +30,12 @@ impl Vector3D {
     pub fn dot(&self, other: &Vector3D) -> f64 {
         self.i * other.i + self.j * other.j + self.k * other.k
     }
+
+    pub fn distance_to(&self, b: &Self) -> f64 {
+        (b - self).length()
+    }
+}
+
 impl<'a, B> Add<B> for &'a Vector3D
 where
     B: Borrow<Vector3D>,
@@ -158,5 +164,14 @@ mod brep_element_tests {
         let v2 = Vector3D::new(2, 2, 2);
 
         assert_eq!(v1.dot(&v2), 2.0);
+    }
+
+    #[test]
+    fn test_vector_distance() {
+        let v0 = Vector3D::new(0, 0, 0);
+        let v1 = Vector3D::new(1, 1, 1);
+
+        assert_eq!(Vector3D::distance_to(&v0, &v1), 3.0_f64.sqrt());
+        assert_eq!(v1.distance_to(&v0), 3.0_f64.sqrt());
     }
 }
