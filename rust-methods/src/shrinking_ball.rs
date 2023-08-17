@@ -14,19 +14,31 @@ pub struct TreeManager3D {
     extent: f64,
 }
 
-fn extent(points: Vec<[f64; 3]>) -> f64 {
+fn extent(points: &[Vector3D]) -> f64 {
     let x_max = points
         .iter()
-        .fold(f64::NEG_INFINITY, |a, [b, _, _]| a.max(*b));
-    let x_min = points.iter().fold(f64::INFINITY, |a, [b, _, _]| a.min(*b));
+        .map(|v| v.i)
+        .fold(f64::NEG_INFINITY, |a, b| a.max(b));
+    let x_min = points
+        .iter()
+        .map(|v| v.i)
+        .fold(f64::INFINITY, |a, b| a.min(b));
     let y_max = points
         .iter()
-        .fold(f64::NEG_INFINITY, |a, [_, b, _]| a.max(*b));
-    let y_min = points.iter().fold(f64::INFINITY, |a, [_, b, _]| a.min(*b));
+        .map(|v| v.j)
+        .fold(f64::NEG_INFINITY, |a, b| a.max(b));
+    let y_min = points
+        .iter()
+        .map(|v| v.j)
+        .fold(f64::INFINITY, |a, b| a.min(b));
     let z_max = points
         .iter()
-        .fold(f64::NEG_INFINITY, |a, [_, _, b]| a.max(*b));
-    let z_min = points.iter().fold(f64::INFINITY, |a, [_, _, b]| a.min(*b));
+        .map(|v| v.k)
+        .fold(f64::NEG_INFINITY, |a, b| a.max(b));
+    let z_min = points
+        .iter()
+        .map(|v| v.k)
+        .fold(f64::INFINITY, |a, b| a.min(b));
 
     ((x_max - x_min).powi(2) + (y_max - y_min).powi(2) + (z_max - z_min).powi(2)).sqrt()
 }
@@ -37,8 +49,11 @@ mod shrinking_ball_test {
 
     #[test]
     fn test_extent() {
-        let points = vec![[0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [1.0, 0.0, 0.0]];
-
-        assert_eq!(extent(points), 3.0_f64.sqrt());
+        let points = vec![
+            Vector3D::new(0, 0, 0),
+            Vector3D::new(1, 1, 1),
+            Vector3D::new(1, 0, 0),
+        ];
+        assert_eq!(extent(&points), 3.0_f64.sqrt());
     }
 }
