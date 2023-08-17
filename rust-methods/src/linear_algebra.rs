@@ -1,4 +1,7 @@
-use std::ops::{Add, Mul};
+use std::{
+    borrow::Borrow,
+    ops::{Add, Mul, Sub},
+};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 struct Vector3D {
@@ -27,17 +30,54 @@ impl Vector3D {
     pub fn dot(&self, other: &Vector3D) -> f64 {
         self.i * other.i + self.j * other.j + self.k * other.k
     }
-}
-
-impl Add for Vector3D {
+impl<'a, B> Add<B> for &'a Vector3D
+where
+    B: Borrow<Vector3D>,
+{
     type Output = Vector3D;
 
-    fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            i: self.i + rhs.i,
-            j: self.j + rhs.j,
-            k: self.k + rhs.k,
+    fn add(self, rhs: B) -> Self::Output {
+        Vector3D {
+            i: self.i + rhs.borrow().i,
+            j: self.j + rhs.borrow().j,
+            k: self.k + rhs.borrow().k,
         }
+    }
+}
+
+impl<B> Add<B> for Vector3D
+where
+    B: Borrow<Vector3D>,
+{
+    type Output = Vector3D;
+
+    fn add(self, rhs: B) -> Self::Output {
+        &self + rhs
+    }
+}
+
+impl<'a, B> Sub<B> for &'a Vector3D
+where
+    B: Borrow<Vector3D>,
+{
+    type Output = Vector3D;
+
+    fn sub(self, rhs: B) -> Self::Output {
+        Vector3D {
+            i: self.i - rhs.borrow().i,
+            j: self.j - rhs.borrow().j,
+            k: self.k - rhs.borrow().k,
+        }
+    }
+}
+
+impl<B> Sub<B> for Vector3D
+where
+    B: Borrow<Vector3D>,
+{
+    type Output = Vector3D;
+    fn sub(self, rhs: B) -> Self::Output {
+        &self - rhs
     }
 }
 
@@ -71,12 +111,27 @@ mod brep_element_tests {
             }
         )
     }
+
     #[test]
     fn test_add_vector3d_to_vector3d() {
         let v1 = Vector3D::new(1.0, 2.0, 3.0);
         let v2 = Vector3D::new(2.0, 3.0, 4.0);
 
-        assert_eq!(v1 + v2, Vector3D::new(3.0, 5.0, 7.0))
+        assert_eq!(&v1 + &v2, Vector3D::new(3.0, 5.0, 7.0));
+        assert_eq!(v1 + &v2, Vector3D::new(3.0, 5.0, 7.0));
+        assert_eq!(&v1 + v2, Vector3D::new(3.0, 5.0, 7.0));
+        assert_eq!(v1 + v2, Vector3D::new(3.0, 5.0, 7.0));
+    }
+
+    #[test]
+    fn test_sub_vector3d_to_vector3d() {
+        let v1 = Vector3D::new(1.0, 2.0, 3.0);
+        let v2 = Vector3D::new(2.0, 3.0, 4.0);
+
+        assert_eq!(&v2 - &v1, Vector3D::new(1.0, 1.0, 1.0));
+        assert_eq!(v2 - &v1, Vector3D::new(1.0, 1.0, 1.0));
+        assert_eq!(&v2 - v1, Vector3D::new(1.0, 1.0, 1.0));
+        assert_eq!(v2 - v1, Vector3D::new(1.0, 1.0, 1.0));
     }
 
     #[test]
