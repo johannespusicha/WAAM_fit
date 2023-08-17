@@ -103,7 +103,7 @@ where
     }
 }
 #[cfg(test)]
-mod brep_element_tests {
+mod linear_algebra_tests {
     use super::*;
 
     #[test]
