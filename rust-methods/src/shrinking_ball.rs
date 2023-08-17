@@ -1,4 +1,18 @@
+use std::collections::HashMap;
+
 use crate::linear_algebra::Vector3D;
+use kiddo::{distance::squared_euclidean, KdTree};
+
+struct BrepElement {
+    point: Vector3D,
+    normal: Vector3D,
+}
+
+pub struct TreeManager3D {
+    data: KdTree<f64, 3>,
+    index: HashMap<usize, BrepElement>,
+    extent: f64,
+}
 
 fn extent(points: Vec<[f64; 3]>) -> f64 {
     let x_max = points
