@@ -14,6 +14,32 @@ pub struct TreeManager3D {
     extent: f64,
 }
 
+impl TreeManager3D {
+
+    fn nearest_to_but(&self, point: &Vector3D, but: &Vector3D) -> Vector3D {
+        assert!(
+            self.data.size() >= 2,
+            "Did not find enough data in the tree. At least two points are needed."
+        );
+        let neighbours = self
+            .data
+            .nearest_n(&point.to_array(), 2, &squared_euclidean);
+        let first = self
+            .index
+            .get(&neighbours.first().unwrap().item)
+            .unwrap()
+            .point;
+        if &first != but {
+            first
+        } else {
+            self.index
+                .get(&neighbours.last().unwrap().item)
+                .unwrap()
+                .point
+        }
+    }
+}
+
 fn extent(points: &[Vector3D]) -> f64 {
     let x_max = points
         .iter()
@@ -42,6 +68,49 @@ fn extent(points: &[Vector3D]) -> f64 {
 
     ((x_max - x_min).powi(2) + (y_max - y_min).powi(2) + (z_max - z_min).powi(2)).sqrt()
 }
+
+/// Calculates the medial radius for a given base point and normal by applying the shrinking ball algorithm.
+///
+///
+/// # Error
+/// Since this is an iterative algortihm, the maximum number of iterations is bound to 100.
+/// Gives back an ´Err´ in case that the maximum number of iterations is reached and no solution was found.
+///
+/// # Acknowledgements
+/// The shrinking ball algorithm was originally introduced by [^ma12]
+///
+/// [^ma12]: Ma, J., Bae, S.W. & Choi, S. 3D medial axis point approximation using nearest neighbors and the normal field. Vis Comput 28, 7–19 (2012). https://doi.org/10.1007/s00371-011-0594-7
+pub fn shrink_ball(
+    base: &Vector3D,
+    normal: &Vector3D,
+    tree: &TreeManager3D,
+) -> Result<f64, String> {
+    let normal_unit = *normal * (1.0 / normal.length());
+    let mut radius = 2.0 * tree.extent;
+
+    let mut remaining = 100;
+    while remaining > 0 {
+        remaining -= 1;
+
+        // radius for a new ball on normal which touches base and near:
+        let center = base + normal_unit * radius;
+        let base_to_near = tree.nearest_to_but(&center, base) - base;
+        let next_radius = 0.5 * base_to_near.dot(&base_to_near) / base_to_near.dot(&normal_unit);
+
+        //Termination condition:
+        if next_radius == radius {
+            return Ok(radius);
+        } else {
+            radius = next_radius;
+        }
+    }
+    // In the case that all remaining cycles are used up before a solution was found:
+    Err(format!(
+        "Iteration did not converge. Giving up on this point:  {:?}",
+        base
+    ))
+}
+
 
 #[cfg(test)]
 mod shrinking_ball_test {
