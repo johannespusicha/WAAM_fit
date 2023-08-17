@@ -15,6 +15,33 @@ pub struct TreeManager3D {
 }
 
 impl TreeManager3D {
+    pub fn from_points_and_normals(
+        points: Vec<Vector3D>,
+        normals: Vec<Vector3D>,
+        indices: Vec<u64>,
+    ) -> Self {
+        assert!(points.len() == normals.len(), "Length of points and normals did not match. Since they are corresponding data, they are required to have equal size.");
+        let mut tree = KdTree::new();
+        let mut map = HashMap::new();
+        let extent = extent(&points);
+        for (index, (point, normal)) in indices.iter().zip(points.iter().zip(normals.iter())) {
+            let index = *index as usize;
+            tree.add(&point.to_array(), index);
+            map.insert(
+                index,
+                BrepElement {
+                    point: *point,
+                    normal: *normal,
+                },
+            );
+        }
+
+        TreeManager3D {
+            data: tree,
+            index: map,
+            extent,
+        }
+    }
 
     fn nearest_to_but(&self, point: &Vector3D, but: &Vector3D) -> Vector3D {
         assert!(
