@@ -5,9 +5,9 @@ use std::{
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Vector3D {
-    i: f64,
-    j: f64,
-    k: f64,
+    pub i: f64,
+    pub j: f64,
+    pub k: f64,
 }
 
 impl Vector3D {
