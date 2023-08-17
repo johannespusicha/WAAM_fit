@@ -111,6 +111,24 @@ pub fn shrink_ball(
     ))
 }
 
+impl TreeManager3D {
+    pub fn eval_radii(&self) -> Vec<f64> {
+        let mut radii = vec![];
+
+        for element in self.index.values() {
+            let radius = match shrink_ball(&element.point, &element.normal, self) {
+                Err(msg) => {
+                    println!("{}", msg);
+                    -1.0
+                }
+                Ok(radius) => radius,
+            };
+            radii.push(radius);
+        }
+
+        radii
+    }
+}
 
 #[cfg(test)]
 mod shrinking_ball_test {
