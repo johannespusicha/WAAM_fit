@@ -1,15 +1,17 @@
 use std::collections::HashMap;
 
 use crate::linear_algebra::Vector3D;
-use kiddo::{distance::squared_euclidean, KdTree};
+use kiddo::{distance::squared_euclidean, float::kdtree::KdTree};
 
 struct BrepElement {
     point: Vector3D,
     normal: Vector3D,
 }
 
+const BUCKET_SIZE: usize = 512;
+
 pub struct TreeManager3D {
-    data: KdTree<f64, 3>,
+    data: KdTree<f64, usize, 3, BUCKET_SIZE, u32>,
     index: HashMap<usize, BrepElement>,
     extent: f64,
 }
@@ -21,7 +23,8 @@ impl TreeManager3D {
         indices: Vec<u64>,
     ) -> Self {
         assert!(points.len() == normals.len(), "Length of points and normals did not match. Since they are corresponding data, they are required to have equal size.");
-        let mut tree = KdTree::new();
+        let size = points.len();
+        let mut tree = KdTree::with_capacity(size);
         let mut map = HashMap::new();
         let extent = extent(&points);
         for (index, (point, normal)) in indices.iter().zip(points.iter().zip(normals.iter())) {
@@ -142,7 +145,7 @@ impl TreeManager3D {
     pub fn eval_radii(&self) -> Vec<f64> {
         let mut radii = vec![];
 
-        for element in self.index.values() {
+        for (index, element) in &self.index {
             let radius = match shrink_ball(&element.point, &element.normal, self) {
                 Err(msg) => {
                     println!("{}", msg);
@@ -150,10 +153,11 @@ impl TreeManager3D {
                 }
                 Ok(radius) => radius,
             };
-            radii.push(radius);
+            radii.push((index, radius));
         }
 
-        radii
+        radii.sort_unstable_by_key(|tuple| tuple.0);
+        radii.iter().map(|tuple| tuple.1).collect()
     }
 }
 
