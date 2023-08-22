@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use crate::linear_algebra::Vector3D;
 use kiddo::{distance::squared_euclidean, float::kdtree::KdTree};
 
+#[derive(Debug)]
 struct BrepElement {
     point: Vector3D,
     normal: Vector3D,
@@ -10,6 +11,7 @@ struct BrepElement {
 
 const BUCKET_SIZE: usize = 512;
 
+#[derive(Debug)]
 pub struct TreeManager3D {
     data: KdTree<f64, usize, 3, BUCKET_SIZE, u32>,
     index: HashMap<usize, BrepElement>,
@@ -120,6 +122,7 @@ pub fn shrink_ball(
 
     let mut remaining = 100;
     while remaining > 0 {
+        assert!(radius >= 0.0, "Expected radius to be >= 0");
         remaining -= 1;
 
         // radius for a new ball on normal which touches base and near:
@@ -130,8 +133,13 @@ pub fn shrink_ball(
         //Termination condition:
         if next_radius == radius {
             return Ok(radius);
-        } else {
+        }
+        if next_radius > 0.0 {
+            // aka if point was contained in Ball
             radius = next_radius;
+        } else {
+            // aka if Ball was empty
+            return Ok(f64::INFINITY);
         }
     }
     // In the case that all remaining cycles are used up before a solution was found:
