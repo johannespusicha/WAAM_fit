@@ -9,6 +9,6 @@ name = "rust_methods"
 crate-type = ["cdylib"]
 
 [dependencies]
-kiddo = "2.1.1"
+kdtree = "0.7.0"
 numpy = "0.19.0"
 pyo3 = "0.19.0"

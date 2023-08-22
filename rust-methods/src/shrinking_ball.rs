@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::linear_algebra::Vector3D;
-use kiddo::{distance::squared_euclidean, float::kdtree::KdTree};
+use kdtree::{distance::squared_euclidean, KdTree};
 
 #[derive(Debug)]
 struct BrepElement {
@@ -9,11 +9,9 @@ struct BrepElement {
     normal: Vector3D,
 }
 
-const BUCKET_SIZE: usize = 512;
-
 #[derive(Debug)]
 pub struct TreeManager3D {
-    data: KdTree<f64, usize, 3, BUCKET_SIZE, u32>,
+    data: KdTree<f64, usize, [f64; 3]>,
     index: HashMap<usize, BrepElement>,
     extent: f64,
 }
@@ -25,13 +23,14 @@ impl TreeManager3D {
         indices: Vec<u64>,
     ) -> Self {
         assert!(points.len() == normals.len(), "Length of points and normals did not match. Since they are corresponding data, they are required to have equal size.");
-        let size = points.len();
-        let mut tree = KdTree::with_capacity(size);
+        let mut tree: KdTree<f64, usize, [f64; 3]> = KdTree::with_capacity(3, 64);
         let mut map = HashMap::new();
         let extent = extent(&points);
         for (index, (point, normal)) in indices.iter().zip(points.iter().zip(normals.iter())) {
             let index = *index as usize;
-            tree.add(&point.to_array(), index);
+            if let Some(err) = tree.add(point.to_array(), index).err() {
+                println!("{err}");
+            }
             map.insert(
                 index,
                 BrepElement {
@@ -53,21 +52,7 @@ impl TreeManager3D {
             self.data.size() >= 2,
             "Did not find enough data in the tree. At least two points are needed."
         );
-        let neighbours = self
-            .data
-            .nearest_n(&point.to_array(), 2, &squared_euclidean);
-        let first = self
-            .index
-            .get(&neighbours.first().unwrap().item)
-            .unwrap()
-            .point;
-        if &first != but {
-            first
-        } else {
-            self.index
-                .get(&neighbours.last().unwrap().item)
-                .unwrap()
-                .point
+        let neighbours = self.data.nearest(&point.to_array(), 2, &squared_euclidean);
         }
     }
 }
