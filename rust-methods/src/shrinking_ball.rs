@@ -47,12 +47,32 @@ impl TreeManager3D {
         }
     }
 
-    fn nearest_to_but(&self, point: &Vector3D, but: &Vector3D) -> Vector3D {
+    fn lim_nearest_but(
+        &self,
+        point: &Vector3D,
+        but: &Vector3D,
+        max_distance: f64,
+    ) -> Option<Vector3D> {
         assert!(
             self.data.size() >= 2,
             "Did not find enough data in the tree. At least two points are needed."
         );
         let neighbours = self.data.nearest(&point.to_array(), 2, &squared_euclidean);
+        match neighbours {
+            Ok(neighbours) => {
+                for (distance, index) in neighbours {
+                    let nearest = self.index.get(index).unwrap().point;
+                    if (max_distance - distance.sqrt()) > 1.0e-6 && &nearest != but {
+                        return Some(nearest);
+                    }
+                }
+                // else: Ball is empty.
+                None
+            }
+            Err(msg) => {
+                println!("{msg}");
+                None
+            }
         }
     }
 }
@@ -103,28 +123,33 @@ pub fn shrink_ball(
     tree: &TreeManager3D,
 ) -> Result<f64, String> {
     let normal_unit = *normal * (1.0 / normal.length());
-    let mut radius = 2.0 * tree.extent;
+    let extent = 2.0 * tree.extent;
+    let mut radius = extent;
 
-    let mut remaining = 100;
+    let mut remaining = 10;
     while remaining > 0 {
         assert!(radius >= 0.0, "Expected radius to be >= 0");
+        assert!(radius < f64::INFINITY);
         remaining -= 1;
 
-        // radius for a new ball on normal which touches base and near:
         let center = base + normal_unit * radius;
-        let base_to_near = tree.nearest_to_but(&center, base) - base;
-        let next_radius = 0.5 * base_to_near.dot(&base_to_near) / base_to_near.dot(&normal_unit);
-
-        //Termination condition:
-        if next_radius == radius {
-            return Ok(radius);
-        }
-        if next_radius > 0.0 {
-            // aka if point was contained in Ball
-            radius = next_radius;
-        } else {
-            // aka if Ball was empty
-            return Ok(f64::INFINITY);
+        match tree.lim_nearest_but(&center, base, radius) {
+            Some(nearest) => {
+                // Point was contained in ball: Calc radius for a new ball on normal which touches base and near:
+                let base_to_near = nearest - base;
+                let next_radius =
+                    0.5 * base_to_near.dot(&base_to_near) / base_to_near.dot(&normal_unit);
+                radius = next_radius;
+            }
+            //Termination condition: Ball is empty
+            None => {
+                if radius == extent {
+                    // radius > extent of geometry => No restriction to radius.
+                    return Ok(f64::INFINITY);
+                } else {
+                    return Ok(radius);
+                }
+            }
         }
     }
     // In the case that all remaining cycles are used up before a solution was found:
