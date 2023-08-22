@@ -9,6 +9,7 @@ import platform
 import subprocess
 from stl import mesh
 from typing import Tuple
+import rust_methods
 
 gmsh.initialize()
 
@@ -21,28 +22,34 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
         output (string): Path to output shape
         triangulationSizing (float, optional): controls size of triangulation. Defaults to 0.0 for auto-sizing.
     """
-    nc, inz, N = getTriangulation(input, triangulationSizing)
-    cnts = nc[inz].mean(axis=1)  # center_points
+    nc, inz, centers, normals, elementTags = getTriangulation(input, triangulationSizing)
 
-    r = getSphereRadii(nc, inz, N)  # radii
-    gradient = np.zeros_like(r)
+    r_inner = rust_methods.get_sphere_radii(centers, -normals, elementTags.tolist())
+    r_inner = np.array(r_inner)
+    r_outer = rust_methods.get_sphere_radii(centers, normals, elementTags.tolist())
+    r_outer = np.array(r_outer)
+
+    gradient = np.zeros_like(r_inner)
     for i in range(gradient.shape[0]):
         neighbours = (np.isin(inz, inz[i]).sum(axis=1) == 2).nonzero()[0]
-        neighbours = neighbours[r[neighbours] != -1]  # neglect invalid radii
+        neighbours = neighbours[r_inner[neighbours] != -1]  # neglect invalid radii
         gradient[i] = np.linalg.norm(
-            (r[i] - r[neighbours]) / np.linalg.norm(cnts[neighbours] - cnts[i], axis=1))
-    r_scaled = r/r.max()
-    grad_scaled = gradient - gradient.min()
+            (r_inner[i] - r_inner[neighbours]) / np.linalg.norm(centers[neighbours] - centers[i], axis=1))
+    
+    grad_inner_scaled = gradient - gradient.min()
 
-    btm_95_percent = (grad_scaled < grad_scaled.max() * 0.95)
-    grad_scaled[grad_scaled >= grad_scaled.max() * 0.95] = grad_scaled[btm_95_percent.nonzero()[0][grad_scaled[btm_95_percent].argmax()]]
-    grad_scaled = grad_scaled / grad_scaled.max()
+    btm_95_percent = (grad_inner_scaled < grad_inner_scaled.max() * 0.95)
+    grad_inner_scaled[grad_inner_scaled >= grad_inner_scaled.max() * 0.95] = grad_inner_scaled[btm_95_percent.nonzero()[0][grad_inner_scaled[btm_95_percent].argmax()]]
+    grad_inner_scaled = grad_inner_scaled / grad_inner_scaled.max()
 
     # Save and show data in gmsh GUI:
-    _, elementTags, __ = gmsh.model.mesh.getElements(2)
     views = []
-    views.append(__add_as_view_to_gmsh__(elementTags[0].tolist(), r_scaled.tolist(), "Sphere Radii")) # type: ignore
-    views.append(__add_as_view_to_gmsh__(elementTags[0].tolist(), grad_scaled.tolist(), "Radii Gradients")) # type: ignore
+    v = gmsh.view.add("Normals")
+    gmsh.view.addModelData(v, 0, "", "ElementData", elementTags.tolist(), normals.tolist(), numComponents=3)
+    views.append(v)
+    views.append(__add_as_view_to_gmsh__(elementTags.tolist(), r_inner.tolist(), "Inner Radii")) # type: ignore
+    views.append(__add_as_view_to_gmsh__(elementTags.tolist(), grad_inner_scaled.tolist(), "Inner Radii Gradients")) # type: ignore
+    views.append(__add_as_view_to_gmsh__(elementTags.tolist(), r_outer.tolist(), "Outer Radii")) # type: ignore
 
     if not os.path.exists(os.path.dirname(output)):
         os.mkdir(os.path.dirname(output))
@@ -85,31 +92,10 @@ def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, n
                 # Pass mesh sizing trough to points (entities with dimension 0)
                 gmsh.model.occ.getEntities(0), triangulationSizing)
         gmsh.model.mesh.generate(2)
-        nc, inz, N = __MshFromGmsh__()
-    elif file_extension == 'stl':
-        meshObj = mesh.Mesh.from_file(input)
-        minEdLen = np.stack([np.linalg.norm(meshObj.v0 - meshObj.v1, axis=1),
-                             np.linalg.norm(meshObj.v0 - meshObj.v2, axis=1),
-                             np.linalg.norm(meshObj.v1 - meshObj.v2, axis=1)]).min()
-        ncRaw = np.vstack([meshObj.v0, meshObj.v1, meshObj.v2])
-        inz = np.arange(ncRaw.shape[0]).reshape((-1, 3))
-        pntIsRenamed = np.zeros(ncRaw.shape[0], dtype=bool)
-        nc = np.zeros([0, 3])
-        N = -meshObj.normals
-        N = N / np.tile(np.linalg.norm(N, axis=1), (3, 1)).T
-
-        for i in range(ncRaw.shape[0]):
-            if pntIsRenamed[i]:
-                continue
-            dists = np.linalg.norm(ncRaw - ncRaw[i], axis=1)
-            identicalPnts = (dists < minEdLen / 2).nonzero()[0]
-            pntIsRenamed[identicalPnts] = True
-            pntIsRenamed[i] = False
-            inz[np.isin(inz, identicalPnts)] = nc.shape[0]
-            nc = np.vstack([nc, ncRaw[i]])
+        nc, inz, C, N, elemTags = __MshFromGmsh__()
     else:
         raise ValueError('File format is not supported')
-    return nc, inz, N
+    return nc, inz, C, N, elemTags
 
 
 def getSphereRadii(nc: np.ndarray, inz: np.ndarray, N: np.ndarray) -> np.ndarray:
@@ -247,12 +233,11 @@ def __MshFromGmsh__():
 
     N = np.cross(nc[inz[:, 1]] - nc[inz[:, 0]], nc[inz[:, 2]] - nc[inz[:, 0]])
     for i in range(inz.shape[0]):
-        gmsh.model.mesh.getNodes(-1, -1, returnParametricCoord=True)
         para = gmsh.model.getParametrization(2, faceIDs[i], C[i])
         N[i] = gmsh.model.getNormal(faceIDs[i], para)
         N[i] = N[i] / np.linalg.norm(N[i])
 
-    return nc, inz, N
+    return nc, inz, C, N, elemTags
 
 
 def __exportToOpenSCAD__(msh, outPath, elemNames=None, colors=None):
