@@ -1,7 +1,7 @@
 # WAAM_fit
-Evaluates the fitness of stuctures for WAAM manufacturing (forked from HenrikJStromberg)
+Evaluates the fitness of stuctures for WAAM manufacturing.
 
-# How to use
+## How to use
 The main part of the application is a python program which is invoked from the command line with:
 ```
 python -m main <input-file> -o <output-file> -s <mesh-size>
