@@ -18,9 +18,9 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
     """
     nc, inz, centers, normals, elementTags = getTriangulation(input, triangulationSizing)
 
-    r_inner = rust_methods.get_sphere_radii(centers, -normals, elementTags.tolist())
+    r_inner = rust_methods.get_sphere_radii(centers, -normals, elementTags.tolist()) # type: ignore
     r_inner = np.array(r_inner)
-    r_outer = rust_methods.get_sphere_radii(centers, normals, elementTags.tolist())
+    r_outer = rust_methods.get_sphere_radii(centers, normals, elementTags.tolist()) # type: ignore
     r_outer = np.array(r_outer)
 
     gradient = np.zeros_like(r_inner)
@@ -66,7 +66,7 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
     gmsh.finalize()
 
 
-def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Create triangulation mesh on input file and return mesh
 
     The mesh will be returned as BREP (boundary representation) with the node coordinates, the inzidenz_matrix (which gives the relation between nodes and edges) and ?
@@ -75,7 +75,7 @@ def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, n
         triangulationSizing (float, optional): Controls mesh-sizing. Defaults to 0.0 for auto-sizing.
 
     Returns:
-        Tuple[np.ndarray, np.ndarray, np.ndarray]: node_coordinates, inzidenz_matrix, vector?
+        Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: node_coordinates, inzidenz_matrix, vector?
     """
     file_extension = input.split('.')[-1]
     if file_extension in ['stp', 'step']:
