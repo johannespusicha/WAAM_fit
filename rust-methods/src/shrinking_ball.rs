@@ -137,9 +137,7 @@ pub fn shrink_ball(
             Some(nearest) => {
                 // Point was contained in ball: Calc radius for a new ball on normal which touches base and near:
                 let base_to_near = nearest - base;
-                let next_radius =
-                    0.5 * base_to_near.dot(&base_to_near) / base_to_near.dot(&normal_unit);
-                radius = next_radius;
+                radius = 0.5 * base_to_near.dot(&base_to_near) / base_to_near.dot(&normal_unit);
             }
             //Termination condition: Ball is empty
             None => {
