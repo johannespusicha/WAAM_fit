@@ -141,7 +141,7 @@ pub fn shrink_ball(
             }
             //Termination condition: Ball is empty
             None => {
-                if radius == extent {
+                if radius >= 2.0 * tree.extent {
                     // radius > extent of geometry => No restriction to radius.
                     return Ok(f64::INFINITY);
                 } else {
