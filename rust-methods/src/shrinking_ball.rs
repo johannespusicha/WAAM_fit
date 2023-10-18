@@ -121,10 +121,10 @@ pub fn shrink_ball(
     base: &Vector3D,
     normal: &Vector3D,
     tree: &TreeManager3D,
+    r_guess: Option<f64>,
 ) -> Result<f64, String> {
     let normal_unit = *normal * (1.0 / normal.length());
-    let extent = 2.0 * tree.extent;
-    let mut radius = extent;
+    let mut radius = r_guess.unwrap_or(2.0 * tree.extent);
 
     let mut remaining = 10;
     while remaining > 0 {
@@ -164,7 +164,8 @@ impl TreeManager3D {
         let mut radii = vec![];
 
         for (index, element) in &self.index {
-            let radius = match shrink_ball(&element.point, &element.normal, self) {
+            let r_guess = radii.last().copied().map(|tuple: (&usize, f64)| tuple.1);
+            let radius = match shrink_ball(&element.point, &element.normal, self, r_guess) {
                 Err(msg) => {
                     println!("{}", msg);
                     -1.0
