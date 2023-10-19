@@ -168,11 +168,14 @@ fn radius_by_two_points_and_normal(
 
 impl TreeManager3D {
     pub fn eval_radii(&self) -> Vec<f64> {
-        let mut radii = vec![];
-
-        for (index, element) in &self.index {
-            let r_guess = radii.last().copied().map(|tuple: (&usize, f64)| tuple.1);
-            let radius = match shrink_ball(&element.point, &element.normal, self, r_guess) {
+        let mut radii: Vec<(&usize, f64)> = vec![];
+        for (_, index) in self
+            .data
+            .iter_nearest(&[0.0, 0.0, 0.0], &squared_euclidean)
+            .expect("tree should have entries")
+        {
+            let element = self.index.get(index).unwrap();
+            let radius = match shrink_ball(&element.point, &element.normal, self, None) {
                 Err(msg) => {
                     println!("{}", msg);
                     -1.0
