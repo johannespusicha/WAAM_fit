@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::fs::OpenOptions;
+use std::io::prelude::*;
 
 use crate::linear_algebra::Vector3D;
 use kdtree::{distance::squared_euclidean, KdTree};
@@ -123,13 +125,26 @@ pub fn shrink_ball(
     tree: &TreeManager3D,
     r_guess: Option<f64>,
 ) -> Result<f64, String> {
+    let mut file = OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("log.txt")
+        .unwrap();
+
     let normal_unit = *normal * (1.0 / normal.length());
     let mut radius = r_guess.unwrap_or(2.0 * tree.extent);
+    writeln!(file, "---");
+    writeln!(
+        file,
+        "SB for base: {:?} radius_guess: {:?} tree.extent: {:?}",
+        &base, &r_guess, &tree.extent
+    );
 
+    let mut radii_history = vec![radius];
     let mut remaining = 10;
     while remaining > 0 {
         assert!(radius >= 0.0, "Expected radius to be >= 0");
-        assert!(radius < f64::INFINITY);
+        //assert!(radius < f64::INFINITY);
         remaining -= 1;
 
         let center = base + normal_unit * radius;
@@ -137,20 +152,39 @@ pub fn shrink_ball(
             Some(nearest) => {
                 // Point was contained in ball: Calc radius for a new ball on normal which touches base and near:
                 radius = radius_by_two_points_and_normal(nearest, base, &normal_unit).abs();
-                radius = 0.5 * base_to_near.dot(&base_to_near) / base_to_near.dot(&normal_unit);
+                radii_history.push(radius);
             }
-            //Termination condition: Ball is empty
+            //Termination condition: r_(i) = r_(i-1) == "The radius did not change"
+            // Approximation: "The radius did not change significantly" == |r_(i) - r_(i-1)| <= epsilon
+            // Open question: How can cycling be avoided?
             None => {
                 if radius >= 2.0 * tree.extent {
                     // radius > extent of geometry => No restriction to radius.
+                    writeln!(
+                        file,
+                        "\t r = {:?} = INFINITY (converged in {} steps)",
+                        &radius,
+                        10 - remaining
+                    );
                     return Ok(f64::INFINITY);
                 } else {
+                    writeln!(
+                        file,
+                        "\t r = {:?} (converged in {} steps)",
+                        &radius,
+                        10 - remaining
+                    );
                     return Ok(radius);
                 }
             }
         }
     }
     // In the case that all remaining cycles are used up before a solution was found:
+    writeln!(
+        file,
+        "Iteration aborted. No convergence achieved. r = {:?}",
+        radii_history
+    );
     Err(format!(
         "Iteration did not converge. Giving up on this point:  {:?}",
         base
@@ -169,11 +203,15 @@ fn radius_by_two_points_and_normal(
 impl TreeManager3D {
     pub fn eval_radii(&self) -> Vec<f64> {
         let mut radii: Vec<(&usize, f64)> = vec![];
+        std::fs::write("tree_log.json", format!("{:?}", &self.data));
+        std::fs::write("map_log.json", format!("{:?}", &self.index));
+
         for (_, index) in self
             .data
             .iter_nearest(&[0.0, 0.0, 0.0], &squared_euclidean)
             .expect("tree should have entries")
         {
+            println!("{}", &index);
             let element = self.index.get(index).unwrap();
             let r_guess = match radii.last().copied() {
                 Some(tuple) => {
