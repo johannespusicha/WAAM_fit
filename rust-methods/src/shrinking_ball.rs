@@ -163,7 +163,7 @@ impl TreeManager3D {
 
         for (index, element) in &self.index {
             let r_guess = radii.last().copied().map(|tuple: (&usize, f64)| tuple.1);
-            let radius = match shrink_ball(&element.point, &element.normal, self, r_guess) {
+            let radius = match shrink_ball(&element.point, &element.normal, self, None) {
                 Err(msg) => {
                     println!("{}", msg);
                     -1.0
