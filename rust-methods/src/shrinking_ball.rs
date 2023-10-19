@@ -175,6 +175,33 @@ impl TreeManager3D {
             .expect("tree should have entries")
         {
             let element = self.index.get(index).unwrap();
+            let r_guess = match radii.last().copied() {
+                Some(tuple) => {
+                    let last_index = tuple.0;
+                    let last_radius = tuple.1;
+                    if (last_radius == f64::INFINITY) || (last_radius <= 0.0) {
+                        None
+                    } else {
+                        let last_element = self.index.get(last_index).expect("last element should exist because the radius vector had a corresponding entry");
+                        let last_base = last_element.point;
+                        let last_unit_normal =
+                            last_element.normal * (1.0 / last_element.normal.length());
+                        let last_center = last_base + last_unit_normal * last_radius;
+                        let last_nearest = self
+                            .lim_nearest_but(&last_center, &last_base, 1.01 * last_radius)
+                            .unwrap_or_else(|| last_base + last_unit_normal * self.extent);
+                        Some(
+                            radius_by_two_points_and_normal(
+                                last_nearest,
+                                &last_base,
+                                &last_unit_normal,
+                            )
+                            .abs(),
+                        )
+                    }
+                }
+                None => None,
+            };
             let radius = match shrink_ball(&element.point, &element.normal, self, None) {
                 Err(msg) => {
                     println!("{}", msg);
