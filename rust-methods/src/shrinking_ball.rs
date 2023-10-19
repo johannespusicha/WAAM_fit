@@ -136,7 +136,7 @@ pub fn shrink_ball(
         match tree.lim_nearest_but(&center, base, radius) {
             Some(nearest) => {
                 // Point was contained in ball: Calc radius for a new ball on normal which touches base and near:
-                let base_to_near = nearest - base;
+                radius = radius_by_two_points_and_normal(nearest, base, &normal_unit).abs();
                 radius = 0.5 * base_to_near.dot(&base_to_near) / base_to_near.dot(&normal_unit);
             }
             //Termination condition: Ball is empty
@@ -155,6 +155,15 @@ pub fn shrink_ball(
         "Iteration did not converge. Giving up on this point:  {:?}",
         base
     ))
+}
+
+fn radius_by_two_points_and_normal(
+    point1: Vector3D,
+    point2: &Vector3D,
+    unit_normal: &Vector3D,
+) -> f64 {
+    let point1_to_point2 = point2 - point1;
+    0.5 * point1_to_point2.dot(&point1_to_point2) / point1_to_point2.dot(unit_normal)
 }
 
 impl TreeManager3D {
