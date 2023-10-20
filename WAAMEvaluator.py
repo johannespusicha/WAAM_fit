@@ -1,6 +1,5 @@
 import gmsh
 import numpy as np
-from scipy.optimize import root
 import os
 from typing import Tuple
 import rust_methods
