@@ -122,9 +122,10 @@ pub fn shrink_ball(
     normal: &Vector3D,
     tree: &TreeManager3D,
     r_guess: Option<f64>,
-) -> Result<f64, String> {
+) -> Result<(f64, f64), String> {
     let normal_unit = *normal * (1.0 / normal.length());
     let mut radius = r_guess.unwrap_or(2.0 * tree.extent);
+    let mut angle = 90.0;
 
     let mut remaining = 10;
     while remaining > 0 {
@@ -137,15 +138,17 @@ pub fn shrink_ball(
             Some(nearest) => {
                 // Point was contained in ball: Calc radius for a new ball on normal which touches base and near:
                 let base_to_near = nearest - base;
-                radius = 0.5 * base_to_near.dot(&base_to_near) / base_to_near.dot(&normal_unit);
+                let projection = base_to_near.dot(&normal_unit) / base_to_near.length();
+                angle = 2.0 * projection.acos();
+                radius = 0.5 * base_to_near.length() / projection;
             }
             //Termination condition: Ball is empty
             None => {
                 if radius >= 2.0 * tree.extent {
                     // radius > extent of geometry => No restriction to radius.
-                    return Ok(f64::INFINITY);
+                    return Ok((f64::INFINITY, 180.0));
                 } else {
-                    return Ok(radius);
+                    return Ok((radius, angle));
                 }
             }
         }
@@ -158,23 +161,29 @@ pub fn shrink_ball(
 }
 
 impl TreeManager3D {
-    pub fn eval_radii(&self) -> Vec<f64> {
-        let mut radii = vec![];
+    pub fn eval_radii(&self) -> (Vec<f64>, Vec<f64>) {
+        let mut radii: Vec<(&usize, f64)> = vec![];
+        let mut angles = vec![];
 
         for (index, element) in &self.index {
-            let r_guess = radii.last().copied().map(|tuple: (&usize, f64)| tuple.1);
-            let radius = match shrink_ball(&element.point, &element.normal, self, None) {
+            let _ = radii.last().copied().map(|tuple| tuple.1);
+            let (radius, angle) = match shrink_ball(&element.point, &element.normal, self, None) {
                 Err(msg) => {
                     println!("{}", msg);
-                    -1.0
+                    (-1.0, -90.0)
                 }
-                Ok(radius) => radius,
+                Ok(results) => results,
             };
             radii.push((index, radius));
+            angles.push((index, angle));
         }
 
         radii.sort_unstable_by_key(|tuple| tuple.0);
-        radii.iter().map(|tuple| tuple.1).collect()
+        angles.sort_unstable_by_key(|tuple| tuple.0);
+        (
+            radii.iter().map(|tuple| tuple.1).collect(),
+            angles.iter().map(|tuple| tuple.1).collect(),
+        )
     }
 }
 

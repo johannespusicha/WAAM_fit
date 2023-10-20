@@ -18,9 +18,9 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
     """
     nc, inz, centers, normals, elementTags = getTriangulation(input, triangulationSizing)
 
-    r_inner = rust_methods.get_sphere_radii(centers, -normals, elementTags.tolist()) # type: ignore
+    r_inner, alpha_inner = rust_methods.get_sphere_radii(centers, -normals, elementTags.tolist()) # type: ignore
     r_inner = np.array(r_inner)
-    r_outer = rust_methods.get_sphere_radii(centers, normals, elementTags.tolist()) # type: ignore
+    r_outer, alpha_outer = rust_methods.get_sphere_radii(centers, normals, elementTags.tolist()) # type: ignore
     r_outer = np.array(r_outer)
 
     gradient = np.zeros_like(r_inner)
@@ -42,6 +42,7 @@ def evaluateSpheres(input, output, triangulationSizing=0.0):
     gmsh.view.addModelData(v, 0, "", "ElementData", elementTags.tolist(), normals.tolist(), numComponents=3)
     views.append(v)
     views.append(__add_as_view_to_gmsh__(elementTags.tolist(), r_inner.tolist(), "Inner Radii")) # type: ignore
+    views.append(__add_as_view_to_gmsh__(elementTags.tolist(), alpha_inner, "Inner Angles")) # type: ignore
     views.append(__add_as_view_to_gmsh__(elementTags.tolist(), grad_inner_scaled.tolist(), "Inner Radii Gradients")) # type: ignore
     views.append(__add_as_view_to_gmsh__(elementTags.tolist(), r_outer.tolist(), "Outer Radii")) # type: ignore
 
