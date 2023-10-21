@@ -1,13 +1,22 @@
 import gmsh
 import numpy as np
-import os
+import tomllib, os
 from typing import Tuple
 import rust_methods
 
+class ConfigError(Exception):
+    pass
+
+with open("WAAM.toml", "rb") as file:
+    config = tomllib.load(file)
+# Validate config file
+for value in config["visualization"].values():
+    if not value in config["styles"]:
+        raise ConfigError("Did not find style " + str(value))
+
 gmsh.initialize()
 
-
-def evaluateSpheres(input, output, triangulationSizing=0.0):
+def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
     """Evaluate all inner and outer spheres on given shape and save to output
 
     Args:
