@@ -1,6 +1,8 @@
 [constraints]
-gradients.inner.max = 0.5
-gradients.outer.max = 0.5
+gradients.inner.min = 0.5
+gradients.inner.max = 1
+gradients.outer.min = 0.5
+gradients.outer.max = 1
 radii.inner.max = 5
 radii.outer.max = 5
 
@@ -9,6 +11,7 @@ radii.outer.max = 5
 [visualization]
 radii = "mark_red"
 gradients = "mark_red"
+angles = "angles"
 
 [styles.default]
 ColormapNumber = 4
@@ -24,3 +27,7 @@ ColormapRotation = 0
 SaturateValues = 0
 ShowScale = 0
 RangeType = 2
+
+[styles.angles]
+ColormapNumber = 4
+ShowScale = 1
