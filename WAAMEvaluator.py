@@ -134,10 +134,41 @@ def __MshFromGmsh__():
     return nc, inz, C, N, elemTags
 
 
-def __add_as_view_to_gmsh__(tags, data, view_name):
-    """
+def __add_as_view_to_gmsh__(tags, data: list, view_name, group=None) -> int:
+    """Add provided `data` as a view for `tags` to gmsh with `view_name` in optional `group`
+    
+    Returns:
+        int: view_tag
     """
     view = gmsh.view.add(view_name)
     gmsh.view.add_homogeneous_model_data(view, 0, "", "ElementData", tags=tags, data=data, numComponents=1)
     gmsh.view.option.set_number(view, "Visible", 0)
+    if isinstance(group, str):
+        gmsh.view.option.set_string(view, "Group", group)
+    __set_view_options__(view, config=config)
+    return view
+
+def __set_view_options__(view, max = None, min = None, config = {}) -> int:
+    if isinstance(max, (int, float)):
+        gmsh.view.option.set_number(view, "CustomMax", max)
+    if isinstance(min, (int, float)):
+        gmsh.view.option.set_number(view, "CustomMin", min)
+    
+    for (key, value) in config.items():
+        if isinstance(value, (int, float)):
+            try: 
+                gmsh.view.option.set_number(view, key ,value)
+            except Exception as error:
+                print(error)
+        elif isinstance(value, (str)):
+            try:
+                gmsh.view.option.set_string(view, key, value)
+            except Exception as error: 
+                print(error)
+        elif isinstance(value, tuple) and len(value) == 4:
+            try:
+                gmsh.view.option.set_color(view, key, r=value[0], g = value[1], b = value[2], a = value[3])
+            except Exception as error:
+                print(error)
+
     return view
