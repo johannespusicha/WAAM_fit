@@ -1,7 +1,7 @@
 import gmsh
 import numpy as np
 import tomllib, os
-from typing import Tuple
+from typing import Any, Tuple
 import rust_methods
 
 class ConfigError(Exception):
@@ -13,6 +13,23 @@ with open("WAAM.toml", "rb") as file:
 for value in config["visualization"].values():
     if not value in config["styles"]:
         raise ConfigError("Did not find style " + str(value))
+    
+def __style_from_config__(group: str) -> dict[str, Any]:
+    try:
+        style_key = config["visualization"][group]
+        style = config["styles"][style_key]
+    except:
+        style = {}
+    return style
+
+def __constraints_from_config__(group, feature):
+    constraints = {}
+    for limit in ["max", "min"]:
+        try:
+            constraints[limit] = config["constraints"][group][feature][limit]
+        except:
+            constraints[limit] = None
+    return constraints
 
 gmsh.initialize()
 
@@ -45,34 +62,42 @@ def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
     grad_inner_scaled = grad_inner_scaled / grad_inner_scaled.max()
 
     # Save and show data in gmsh GUI:
-    views = []
-    v = gmsh.view.add("Normals")
-    gmsh.view.addModelData(v, 0, "", "ElementData", elementTags.tolist(), normals.tolist(), numComponents=3)
-    views.append(v)
-    views.append(__add_as_view_to_gmsh__(elementTags.tolist(), r_inner.tolist(), "Inner Radii")) # type: ignore
-    views.append(__add_as_view_to_gmsh__(elementTags.tolist(), alpha_inner, "Inner Angles")) # type: ignore
-    views.append(__add_as_view_to_gmsh__(elementTags.tolist(), grad_inner_scaled.tolist(), "Inner Radii Gradients")) # type: ignore
-    views.append(__add_as_view_to_gmsh__(elementTags.tolist(), r_outer.tolist(), "Outer Radii")) # type: ignore
+    #if not os.path.exists(os.path.dirname(output)):
+    #    os.mkdir(os.path.dirname(output))
 
-    if not os.path.exists(os.path.dirname(output)):
-        os.mkdir(os.path.dirname(output))
+    # file_names = ["radii_scaled", "gradient_scaled"]
+    # for v in views:
+    #     # Save views:
+    #     gmsh.view.write(v, output + file_names.pop() + ".msh")
 
-    for v in views:
-        # Set a green to blue color map as the ColorTable = {Green, Red} option is not yet available in API
-        gmsh.view.option.set_number(v, "ColormapNumber", 17)
-        gmsh.view.option.set_number(v, "ColormapSwap", 1)
-        
-        # Save views:
-        file_names = ["radii_scaled", "gradient_scaled"]
-        gmsh.view.write(v, output + file_names.pop() + ".msh")
-
-    # Show last view by default:
-    gmsh.view.option.set_number(views[-1], "Visible", 1)
-
-    gmsh.fltk.initialize()
+    results = {
+               "radii" : {"inner" : r_inner.tolist(), "outer" : r_outer.tolist()},
+               "gradients" : {"inner" : grad_inner_scaled.tolist()},
+               "angles" : {"inner" : alpha_inner, "outer" : alpha_outer}
+               }
+    
+    plot_in_gmsh(elementTags.tolist(), results)
     while gmsh.fltk.is_available():
         gmsh.fltk.wait()
     gmsh.finalize()
+
+
+def plot_in_gmsh(elements, results):
+    """Visualize provided data in gmsh by respecting options set in WAAM.toml
+    Results are added as groups to gmsh as provided in subdicts
+
+    Args:
+        elements (list): gmsh elements on which results shall be applied
+        results (dict[str, dict[str, list]]): Hierarchial presentation of results
+    """
+    for group in results:
+        style = __style_from_config__(group)
+        for feature in results[group]:
+            view = __add_as_view_to_gmsh__(elements, results[group][feature], feature, group)
+            constraints = __constraints_from_config__(group, feature)
+            __set_view_options__(view, constraints["max"], constraints["min"], config=style)
+
+    gmsh.fltk.update()
 
 
 def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
@@ -145,7 +170,8 @@ def __add_as_view_to_gmsh__(tags, data: list, view_name, group=None) -> int:
     gmsh.view.option.set_number(view, "Visible", 0)
     if isinstance(group, str):
         gmsh.view.option.set_string(view, "Group", group)
-    __set_view_options__(view, config=config)
+    if "default" in config["styles"]:
+        __set_view_options__(view, config=config["styles"]["default"])
     return view
 
 def __set_view_options__(view, max = None, min = None, config = {}) -> int:
