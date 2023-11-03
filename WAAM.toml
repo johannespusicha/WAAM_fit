@@ -1,15 +1,65 @@
-[features.wall_thickness_inner]
-name = "Wanddicke/Innen"
+[features]
+# Available data types are radii.inner, radii.outer, gradients.inner, gradients.outer, angles.inner, angles.outer
+# If a filter is specified, only data which matches to the filter condition is plotted.
+# The attributes `min` and `max` limit  the range to which the color map is applied.
+[features.wall_thickness]
+style = "mark_red"
+name = "Abstände/Wanddicke"
 data = "radii.inner"
 filter = "parallel"
+max = 2
 
-# Configures filter for use on data in features
+[features.gap]
+style = "mark_red"
+name = "Abstände/Zwischenraum"
+data = "radii.outer"
+filter = "parallel"
+max = 2
+
+[features.radii1]
+name = "Kanten/Innen"
+data = "radii.inner"
+filter = "inner_corner"
+max = 5
+style = "mark_red"
+
+[features.radii2]
+name = "Kanten/Außen"
+data = "radii.outer"
+filter = "outer_corner"
+max = 5
+style = "mark_red"
+
+[features.angles1]
+name = "Winkel/Innen"
+data = "angles.inner"
+filter = "small_inner_radius"
+max = 20
+style = "mark_red"
+
 [filter]
+# Configures filter for use on data in features
 [filter.parallel]
 data = "angles.inner"
 less_eq = 10
 
-# Configuarates style settings for gmsh (table names must not be modified)
+[filter.inner_corner]
+# All non-parallel data
+data = "angles.inner"
+greater_eq = 75
+less_eq = 105
+
+[filter.outer_corner]
+data = "angles.outer"
+greater_eq = 75
+less_eq = 105
+
+[filter.small_inner_radius]
+data = "radii.inner"
+less_eq = 1
+
+[styles]
+# Configuarates style settings for gmsh 
 # Options can be all sorts of options applicable for gmsh.view
 [styles.default]
 ColormapNumber = 4
