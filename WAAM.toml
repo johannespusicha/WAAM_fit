@@ -5,13 +5,17 @@ gradients.outer.min = 0.5
 gradients.outer.max = 1
 radii.inner.max = 5
 radii.outer.max = 5
+angles.outer.min = 1.5
+angles.outer.max = 179
+angles.inner.min = 1
+angles.inner.max = 179
 
 # Configuarates style settings for gmsh (table names must not be modified)
 # Options can be all sorts of options applicable for gmsh.view
 [visualization]
 radii = "mark_red"
 gradients = "mark_red"
-angles = "angles"
+angles = "mark_red"
 
 [styles.default]
 ColormapNumber = 4
