@@ -135,7 +135,6 @@ def plot_in_gmsh(elements, results):
         data_key = __parse_datatype__((feature["data"]))
         data = __get_data_by_key__(results, data_key)
         filter = __get_filter_as_configured__(results, feature)
-        print(filter)
         view = __add_as_view_to_gmsh__(elements[filter].tolist(), data[filter].tolist(), name, group)
         
         style = __style_from_config__(feature["style"]) if "style" in feature else {}
@@ -160,11 +159,8 @@ def __get_filter_as_configured__(results: dict[str, dict[str, np.ndarray]], feat
         except:
             filter_min = 0
         try:
-            print("Found max in filter")
             filter_max = config["filter"][filter]["less_eq"]
-            print(filter_data)
         except:
-            print("No max in filter")
             filter_max = nan
         filter = (filter_data >= filter_min) * (filter_data <= filter_max)
         return filter
