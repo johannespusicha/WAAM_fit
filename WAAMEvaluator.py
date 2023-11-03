@@ -1,3 +1,5 @@
+from math import nan
+import re
 import gmsh
 import numpy as np
 import tomllib, os
@@ -10,13 +12,33 @@ class ConfigError(Exception):
 with open("WAAM.toml", "rb") as file:
     config = tomllib.load(file)
 # Validate config file
-for value in config["visualization"].values():
-    if not value in config["styles"]:
-        raise ConfigError("Did not find style " + str(value))
-    
-def __style_from_config__(group: str) -> dict[str, Any]:
+for feature in config["features"]:
     try:
-        style_key = config["visualization"][group]
+        filter_list = config["filter"]
+    except:
+        filter_list  = []
+    try:
+        filter = config["features"][feature]["filter"]
+    except:
+        filter = None
+    if not (filter is None or filter in filter_list):
+        raise ConfigError("Use of unspecified filter: " + str(filter))
+    
+    try:
+        style_list = config["styles"]
+    except:
+        style_list = []
+    try:
+        style = config["features"][feature]["style"]
+    except:
+        style = None
+    if not (style is None or style in style_list):
+        raise ConfigError("Did not find style " + str(style))
+    
+ANALYSIS_DATATYPES = ["radii.inner", "radii.outer", "gradients.inner", "gradients.outer", "angles.inner", "angles.outer"]
+
+def __style_from_config__(style_key: str) -> dict[str, Any]:
+    try:
         style = config["styles"][style_key]
     except:
         style = {}
@@ -30,6 +52,21 @@ def __constraints_from_config__(group, feature):
         except:
             constraints[limit] = None
     return constraints
+
+def __parse_datatype__(datatype: str):
+    if (datatype == "") or (datatype is None):
+        raise ConfigError("Missing data")
+    elif datatype not in ANALYSIS_DATATYPES:
+        raise ConfigError("Invalid data was specified: " + str(datatype))
+    else:
+        return datatype.split(".")
+
+def __parse_name__(name: str):
+    if not (name == "" or name is None):
+        group, _, name =  name.rpartition("/")
+        return group, name
+    else:
+        raise ConfigError("Missing name attribute")
 
 gmsh.initialize()
 
@@ -45,8 +82,10 @@ def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
 
     r_inner, alpha_inner = rust_methods.get_sphere_radii(centers, -normals, elementTags.tolist()) # type: ignore
     r_inner = np.array(r_inner)
+    alpha_inner = np.array(alpha_inner)
     r_outer, alpha_outer = rust_methods.get_sphere_radii(centers, normals, elementTags.tolist()) # type: ignore
     r_outer = np.array(r_outer)
+    alpha_outer = np.array(alpha_outer)
 
     gradient = np.zeros_like(r_inner)
     for i in range(gradient.shape[0]):
@@ -71,8 +110,8 @@ def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
     #     gmsh.view.write(v, output + file_names.pop() + ".msh")
 
     results = {
-               "radii" : {"inner" : r_inner.tolist(), "outer" : r_outer.tolist()},
-               "gradients" : {"inner" : grad_inner_scaled.tolist()},
+               "radii" : {"inner" : r_inner, "outer" : r_outer},
+               "gradients" : {"inner" : grad_inner_scaled, "outer" : None},
                "angles" : {"inner" : alpha_inner, "outer" : alpha_outer}
                }
     
@@ -88,17 +127,49 @@ def plot_in_gmsh(elements, results):
 
     Args:
         elements (list): gmsh elements on which results shall be applied
-        results (dict[str, dict[str, list]]): Hierarchial presentation of results
+        results (dict[str, dict[str, array]]): Hierarchial presentation of results
     """
-    for group in results:
-        style = __style_from_config__(group)
-        for feature in results[group]:
-            view = __add_as_view_to_gmsh__(elements, results[group][feature], feature, group)
-            constraints = __constraints_from_config__(group, feature)
-            __set_view_options__(view, constraints["max"], constraints["min"], config=style)
+    elements = np.array(elements)
+    for feature in config["features"].values():
+        group, name = __parse_name__(feature["name"])
+        data_key = __parse_datatype__((feature["data"]))
+        data = __get_data_by_key__(results, data_key)
+        filter = __get_filter_as_configured__(results, feature)
+        print(filter)
+        view = __add_as_view_to_gmsh__(elements[filter].tolist(), data[filter].tolist(), name, group)
+        
+        style = __style_from_config__(feature["style"]) if "style" in feature else {}
+        max = feature["max"] if "max" in feature else None
+        min = feature["min"] if "min" in feature else None
+        __set_view_options__(view, max, min, config=style)
 
     gmsh.fltk.update()
 
+def __get_data_by_key__(results: dict[str, dict[str, np.ndarray]], key:list[str]) -> np.ndarray:
+    return results[key[0]][key[1]]
+
+def __get_filter_as_configured__(results: dict[str, dict[str, np.ndarray]], feature: dict) -> np.ndarray:
+    try:
+        filter = feature["filter"]
+    except:
+        filter = None
+    if not filter is None:
+        filter_data = __get_data_by_key__(results, __parse_datatype__(config["filter"][filter]["data"]))
+        try:
+            filter_min = config["filter"][filter]["greater_eq"]
+        except:
+            filter_min = 0
+        try:
+            print("Found max in filter")
+            filter_max = config["filter"][filter]["less_eq"]
+            print(filter_data)
+        except:
+            print("No max in filter")
+            filter_max = nan
+        filter = (filter_data >= filter_min) * (filter_data <= filter_max)
+        return filter
+    else:
+        return True
 
 def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Create triangulation mesh on input file and return mesh

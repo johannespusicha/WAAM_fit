@@ -1,16 +1,18 @@
-[features.wall_thickness_inner]
-name = "Wanddicke/Innen"
-data = "radii.inner"
-filter = "parallel"
-
-# Configures filter for use on data in features
-[filter]
-[filter.parallel]
-data = "angles.inner"
-less_eq = 10
+[constraints]
+gradients.inner.min = 0.5
+gradients.inner.max = 1
+gradients.outer.min = 0.5
+gradients.outer.max = 1
+radii.inner.max = 5
+radii.outer.max = 5
 
 # Configuarates style settings for gmsh (table names must not be modified)
 # Options can be all sorts of options applicable for gmsh.view
+[visualization]
+radii = "mark_red"
+gradients = "mark_red"
+angles = "angles"
+
 [styles.default]
 ColormapNumber = 4
 SaturateValues = 0
