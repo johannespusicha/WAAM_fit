@@ -139,7 +139,7 @@ pub fn shrink_ball(
                 // Point was contained in ball: Calc radius for a new ball on normal which touches base and near:
                 let base_to_near = nearest - base;
                 let projection = base_to_near.dot(&normal_unit) / base_to_near.length();
-                angle = 2.0 * projection.acos();
+                angle = 2.0 * projection.acos().to_degrees();
                 radius = 0.5 * base_to_near.length() / projection;
             }
             //Termination condition: Ball is empty
