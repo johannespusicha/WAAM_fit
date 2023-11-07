@@ -9,7 +9,7 @@ classifiers = [
 ]
 
 [project.scripts]
-waam_fit = "waam_fit:main"
+waam_fit = "waam_fit.main:main"
 
 [build-system]
 requires = ["maturin>=1.1,<2.0"]
