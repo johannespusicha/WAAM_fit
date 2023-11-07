@@ -161,7 +161,8 @@ def __get_filter_as_configured__(results: dict[str, dict[str, np.ndarray]], feat
         filter = (filter_data >= filter_min) * (filter_data <= filter_max)
         return filter
     else:
-        return np.array([True])
+        data = __get_data_by_key__(results, __parse_datatype__(feature["data"]))
+        return np.ones_like(data, dtype=bool)
 
 def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Create triangulation mesh on input file and return mesh
