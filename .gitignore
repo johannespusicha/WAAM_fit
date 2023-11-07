@@ -5,5 +5,5 @@ output/*
 examples/*
 
 # Rust:
-/rust-methods/target
-/rust-methods/Cargo.lock
+/rust/target
+/rust/Cargo.lock
