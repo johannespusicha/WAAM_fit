@@ -9,7 +9,7 @@ import rust_methods
 class ConfigError(Exception):
     pass
 
-with open("WAAM.toml", "rb") as file:
+with open(os.path.dirname(os.path.abspath(__file__)) + "/WAAM.toml", "rb") as file:
     config = tomllib.load(file)
 # Validate config file
 for feature in config["features"]:
