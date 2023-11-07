@@ -14,3 +14,4 @@ classifiers = [
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
+module-name = "waam_fit._rust_methods"
