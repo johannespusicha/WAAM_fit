@@ -4,7 +4,7 @@ import gmsh
 import numpy as np
 import tomllib, os
 from typing import Any, Tuple
-import rust_methods
+from waam_fit import rust_methods
 
 class ConfigError(Exception):
     pass
