@@ -133,7 +133,8 @@ def plot_in_gmsh(elements, results):
     for feature in config["features"].values():
         group, name = __parse_name__(feature["name"])
         data_key = __parse_datatype__((feature["data"]))
-        data = __get_data_by_key__(results, data_key)
+        scale = feature["scale"] if "scale" in feature else 1.0
+        data = __get_data_by_key__(results, data_key) * scale
         filter = __get_filter_as_configured__(results, feature)
         view = __add_as_view_to_gmsh__(elements[filter].tolist(), data[filter].tolist(), name, group)
         
@@ -165,7 +166,7 @@ def __get_filter_as_configured__(results: dict[str, dict[str, np.ndarray]], feat
         filter = (filter_data >= filter_min) * (filter_data <= filter_max)
         return filter
     else:
-        return True
+        return np.array([True])
 
 def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Create triangulation mesh on input file and return mesh
