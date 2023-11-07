@@ -100,15 +100,6 @@ def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
     grad_inner_scaled[grad_inner_scaled >= grad_inner_scaled.max() * 0.95] = grad_inner_scaled[btm_95_percent.nonzero()[0][grad_inner_scaled[btm_95_percent].argmax()]]
     grad_inner_scaled = grad_inner_scaled / grad_inner_scaled.max()
 
-    # Save and show data in gmsh GUI:
-    #if not os.path.exists(os.path.dirname(output)):
-    #    os.mkdir(os.path.dirname(output))
-
-    # file_names = ["radii_scaled", "gradient_scaled"]
-    # for v in views:
-    #     # Save views:
-    #     gmsh.view.write(v, output + file_names.pop() + ".msh")
-
     results = {
                "radii" : {"inner" : r_inner, "outer" : r_outer},
                "gradients" : {"inner" : grad_inner_scaled, "outer" : None},
@@ -116,6 +107,13 @@ def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
                }
     
     plot_in_gmsh(elementTags.tolist(), results)
+
+    # Save data
+    if not os.path.exists(os.path.dirname(output)):
+        os.mkdir(os.path.dirname(output))
+    for view in gmsh.view.get_tags():
+        name = gmsh.view.option.get_string(view, "Group").replace('/', '_') + '_' + gmsh.view.option.get_string(view, "Name")
+        gmsh.view.write(view, output + name + ".msh")
     while gmsh.fltk.is_available():
         gmsh.fltk.wait()
     gmsh.finalize()
