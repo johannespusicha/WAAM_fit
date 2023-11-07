@@ -3,60 +3,130 @@
 # If a filter is specified, only data which matches to the filter condition is plotted.
 # The attributes `min` and `max` limit  the range to which the color map is applied.
 [features.wall_thickness]
-style = "mark_red"
 name = "Abstände/Wanddicke"
 data = "radii.inner"
+scale = 2.0
+max = 4.0                        # W_L
 filter = "parallel"
-max = 2
+style = "gradient_yellow_to_red"
 
 [features.gap]
-style = "mark_red"
 name = "Abstände/Zwischenraum"
 data = "radii.outer"
+scale = 2.0
+max = 4.4                        # 1.1*W_L with W_L = 4.0
 filter = "parallel"
-max = 2
+style = "gradient_yellow_to_red"
 
-[features.radii1]
+[features.inner_corner]
 name = "Kanten/Innen"
 data = "radii.inner"
-filter = "inner_corner"
 max = 5
-style = "mark_red"
+filter = "inner_corner"
+style = "gradient_yellow_to_red"
 
-[features.radii2]
+[features.outer_corner]
 name = "Kanten/Außen"
 data = "radii.outer"
-filter = "outer_corner"
 max = 5
-style = "mark_red"
+filter = "outer_corner"
+style = "gradient_yellow_to_red"
 
-[features.angles1]
+[features.inner_angle]
 name = "Winkel/Innen"
 data = "angles.inner"
-filter = "small_inner_radius"
 max = 20
-style = "mark_red"
+filter = "small_inner_radius"
+style = "gradient_yellow_to_red"
+
+[features.outer_angle]
+name = "Winkel/Außen"
+data = "angles.outer"
+max = 20
+filter = "small_inner_radius"
+style = "gradient_yellow_to_red"
+
+[features.cross_sectional_area]
+name = "Querschnittsfläche"
+data = "gradients.inner"
+min = 0.3
+filter = "parallel"
+style = "gradient_yellow_to_red"
+
+# For debugging purposes uncomment the following features to present raw data
+[features.db_radii_inner]
+name = "Debug/Kenngrößen/Innerer Radius"
+data = "radii.inner"
+
+[features.db_radii_outer]
+name = "Debug/Kenngrößen/Äußerer Radius"
+data = "radii.outer"
+
+[features.db_gradient_inner]
+name = "Debug/Kenngrößen/Innerer Gradient"
+data = "gradients.inner"
+
+#[features.db_gradient_outer]
+#name = "Debug/Kenngrößen/Äußerer Gradient"
+#data = "gradients.outer"
+
+[features.db_angle_inner]
+name = "Debug/Kenngrößen/Innerer Winkel"
+data = "angles.inner"
+
+[features.db_angle_outer]
+name = "Debug/Kenngrößen/Äußerer Winkel"
+data = "angles.outer"
+
+[features.db_filter_parallel]
+name = "Debug/Filter/Parallele Flächen"
+data = "angles.inner"
+filter = "parallel"
+
+[features.db_filter_inner_corner]
+name = "Debug/Filter/Innere Ecken"
+data = "angles.inner"
+filter = "inner_corner"
+
+[features.db_filter_outer_corner]
+name = "Debug/Filter/Äußere Ecken"
+data = "angles.outer"
+filter = "outer_corner"
+
+[features.db_filter_small_inner_radius]
+name = "Debug/Filter/Kleine innere Radien"
+data = "radii.inner"
+filter = "small_inner_radius"
+
+#[features.db_filter_small_outer_radius]
+#name = "Debug/Filter/Kleine äußere Radien"
+#data = "radii.inner"
+#filter = "small_outer_radius"
 
 [filter]
 # Configures filter for use on data in features
 [filter.parallel]
 data = "angles.inner"
-less_eq = 10
+less_eq = 5
 
 [filter.inner_corner]
 # All non-parallel data
 data = "angles.inner"
-greater_eq = 75
-less_eq = 105
+greater_eq = 5
+less_eq = 175
 
 [filter.outer_corner]
 data = "angles.outer"
-greater_eq = 75
-less_eq = 105
+greater_eq = 5
+less_eq = 175
 
 [filter.small_inner_radius]
 data = "radii.inner"
-less_eq = 1
+less_eq = 1.5
+
+[filter.small_outer_radius]
+data = "radii.outer"
+less_eq = 1.5
 
 [styles]
 # Configuarates style settings for gmsh 
@@ -64,18 +134,14 @@ less_eq = 1
 [styles.default]
 ColormapNumber = 4
 SaturateValues = 0
-ShowScale = 0
+ShowScale = 1
 
-[styles.mark_red]
+[styles.gradient_yellow_to_red]
 ColormapAlpha = 1
 ColormapBias = 0
 ColormapCurvature = 0
 ColormapNumber = 16
 ColormapRotation = 0
 SaturateValues = 0
-ShowScale = 0
-RangeType = 2
-
-[styles.angles]
-ColormapNumber = 4
 ShowScale = 1
+RangeType = 2
