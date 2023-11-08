@@ -5,7 +5,6 @@ src/waam_fit/*.so
 ressources/
 .vscode/
 output/*
-examples/*
 
 # Rust:
 /rust/target
