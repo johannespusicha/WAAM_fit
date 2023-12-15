@@ -36,4 +36,4 @@ The Post-Processing can be configured via the `WAAM.toml` file (in [/src/waam_fi
 The `feature` group defines the mapping of geometry indicators to corresponding features. For every feature manufacturability is determined by the geometry indicator specified as `data`, 
 while the `min`, `max` and `scale` attributes configure the data range that is not manufacturable. To only include elements belonging to the feature a `filter` can be specified.
 
-A `filter` consists of another geometry indicator specified as `data` and a threshold defined by `less_eq` or `greater_eq` to configure the included elements (all elements with `data`$\leq$ resp $\geq$ the threshold).
+A `filter` consists of another geometry indicator specified as `data` and a threshold defined by `less_eq` or `greater_eq` to configure the included elements (all elements with `data`$\leq$ or $\geq$ the threshold).
