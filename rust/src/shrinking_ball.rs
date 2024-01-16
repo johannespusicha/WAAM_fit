@@ -122,9 +122,10 @@ pub fn shrink_ball(
     normal: &Vector3D,
     tree: &TreeManager3D,
     r_guess: Option<f64>,
-) -> Result<(f64, f64), String> {
+) -> Result<(f64, f64, f64), String> {
     let normal_unit = *normal * (1.0 / normal.length());
     let mut radius = r_guess.unwrap_or(2.0 * tree.extent);
+    let mut distance = radius;
     let mut angle = 90.0;
 
     let mut remaining = 10;
@@ -138,17 +139,18 @@ pub fn shrink_ball(
             Some(nearest) => {
                 // Point was contained in ball: Calc radius for a new ball on normal which touches base and near:
                 let base_to_near = nearest - base;
-                let projection = base_to_near.dot(&normal_unit) / base_to_near.length();
+                distance = base_to_near.length();
+                let projection = base_to_near.dot(&normal_unit) / distance;
                 angle = 2.0 * projection.acos().to_degrees();
-                radius = 0.5 * base_to_near.length() / projection;
+                radius = 0.5 * distance / projection;
             }
             //Termination condition: Ball is empty
             None => {
                 if radius >= 2.0 * tree.extent {
                     // radius > extent of geometry => No restriction to radius.
-                    return Ok((f64::INFINITY, 180.0));
+                    return Ok((f64::INFINITY, f64::INFINITY, 180.0));
                 } else {
-                    return Ok((radius, angle));
+                    return Ok((radius, distance, angle));
                 }
             }
         }
@@ -161,27 +163,31 @@ pub fn shrink_ball(
 }
 
 impl TreeManager3D {
-    pub fn eval_radii(&self) -> (Vec<f64>, Vec<f64>) {
+    pub fn eval_radii(&self) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
         let mut radii: Vec<(&usize, f64)> = vec![];
+        let mut distances = vec![];
         let mut angles = vec![];
 
         for (index, element) in &self.index {
-            let _ = radii.last().copied().map(|tuple| tuple.1);
-            let (radius, angle) = match shrink_ball(&element.point, &element.normal, self, None) {
-                Err(msg) => {
-                    println!("{}", msg);
-                    (-1.0, -90.0)
-                }
-                Ok(results) => results,
-            };
+            let (radius, distance, angle) =
+                match shrink_ball(&element.point, &element.normal, self, None) {
+                    Err(msg) => {
+                        println!("{}", msg);
+                        (-1.0, -1.0, -90.0)
+                    }
+                    Ok(results) => results,
+                };
             radii.push((index, radius));
+            distances.push((index, distance));
             angles.push((index, angle));
         }
 
         radii.sort_unstable_by_key(|tuple| tuple.0);
+        distances.sort_unstable_by_key(|tuple| tuple.0);
         angles.sort_unstable_by_key(|tuple| tuple.0);
         (
             radii.iter().map(|tuple| tuple.1).collect(),
+            distances.iter().map(|tuple| tuple.1).collect(),
             angles.iter().map(|tuple| tuple.1).collect(),
         )
     }

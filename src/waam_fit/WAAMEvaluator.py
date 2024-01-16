@@ -35,7 +35,7 @@ for feature in config["features"]:
     if not (style is None or style in style_list):
         raise ConfigError("Did not find style " + str(style))
     
-ANALYSIS_DATATYPES = ["radii.inner", "radii.outer", "gradients.inner", "gradients.outer", "angles.inner", "angles.outer"]
+ANALYSIS_DATATYPES = ["radii.inner", "radii.outer", "gradients.inner", "gradients.outer", "distances.inner", "distances.outer", "angles.inner", "angles.outer"]
 
 def __style_from_config__(style_key: str) -> dict[str, Any]:
     try:
@@ -80,11 +80,14 @@ def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
     """
     nc, inz, centers, normals, elementTags = getTriangulation(input, triangulationSizing)
 
-    r_inner, alpha_inner = rust_methods.get_sphere_radii(centers, -normals, elementTags.tolist()) # type: ignore
+    r_inner, d_inner, alpha_inner = rust_methods.get_sphere_radii(centers, -normals, elementTags.tolist()) # type: ignore
     r_inner = np.array(r_inner)
+    d_inner = np.array(d_inner)
     alpha_inner = np.array(alpha_inner)
-    r_outer, alpha_outer = rust_methods.get_sphere_radii(centers, normals, elementTags.tolist()) # type: ignore
+
+    r_outer, d_outer, alpha_outer = rust_methods.get_sphere_radii(centers, normals, elementTags.tolist()) # type: ignore
     r_outer = np.array(r_outer)
+    d_outer = np.array(d_outer)
     alpha_outer = np.array(alpha_outer)
 
     gradient = np.zeros_like(r_inner)
@@ -102,6 +105,7 @@ def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
 
     results = {
                "radii" : {"inner" : r_inner, "outer" : r_outer},
+               "distances" : {"inner" : d_inner, "outer": d_outer},
                "gradients" : {"inner" : grad_inner_scaled, "outer" : None},
                "angles" : {"inner" : alpha_inner, "outer" : alpha_outer}
                }
@@ -140,12 +144,16 @@ def plot_in_gmsh(elements, results):
         else:
             print(feature['name'])
             filter = __get_filter_as_configured__(results, feature)
-            view = __add_as_view_to_gmsh__(elements[filter].tolist(), data[filter].tolist(), name, group)
-
-            style = __style_from_config__(feature["style"]) if "style" in feature else {}
-            max = feature["max"] if "max" in feature else None
-            min = feature["min"] if "min" in feature else None
-            __set_view_options__(view, max, min, config=style)
+            try:
+                view = __add_as_view_to_gmsh__(elements[filter].tolist(), data[filter].tolist(), name, group)
+    
+                style = __style_from_config__(feature["style"]) if "style" in feature else {}
+                max = feature["max"] if "max" in feature else None
+                min = feature["min"] if "min" in feature else None
+                __set_view_options__(view, max, min, config=style)
+            except Exception as error:
+                print(error)
+                continue
     # Hide mesh
     gmsh.option.set_number("Mesh.SurfaceEdges", 0)
     gmsh.option.set_number("Mesh.VolumeEdges", 0)
