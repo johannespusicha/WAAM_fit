@@ -31,7 +31,7 @@ pip install waam_fit
 have to be executed to compile the rust bindings and install the python script as command-line-tool (see also the [maturin package documentation](https://www.maturin.rs)).
 
 ## Configuration
-The Post-Processing can be configured via the `WAAM.toml` file (in [/src/waam_fit/WAAM.toml](https://github.com/johannespusicha/WAAM_fit/blob/master/src/waam_fit/WAAM.toml)). 
+The Post-Processing can be configured via the `WAAM.toml` file (in [/src/waam_fit/WAAM.toml](/src/waam_fit/WAAM.toml)). 
 
 The `feature` group defines the mapping of geometry indicators to corresponding features. For every feature manufacturability is determined by the geometry indicator specified as `data`, 
 while the `min`, `max` and `scale` attributes configure the data range that is not manufacturable. To only include elements belonging to the feature a `filter` can be specified.
