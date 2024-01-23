@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::HashMapop;
 
 use crate::linear_algebra::Vector3D;
 use kdtree::{distance::squared_euclidean, KdTree};
@@ -150,6 +150,23 @@ pub fn shrink_ball(
                     // radius > extent of geometry => No restriction to radius.
                     return Ok((f64::INFINITY, f64::INFINITY, 180.0));
                 } else {
+                    #[cfg(feature = "logmedials")]
+                    {
+                        use std::fs::OpenOptions;
+                        use std::io::Write;
+
+                        let mut file_handle = OpenOptions::new()
+                            .append(true)
+                            .create(true)
+                            .open("./output/log_medial_points.txt")
+                            .expect("Unable to open file");
+
+                        file_handle
+                            .write_all(
+                                format!("{} {} {}\n", center.i, center.j, center.k).as_bytes(),
+                            )
+                            .expect("Unable to write data");
+                    }
                     return Ok((radius, distance, angle));
                 }
             }
