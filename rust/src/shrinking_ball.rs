@@ -1,4 +1,4 @@
-use std::collections::HashMapop;
+use std::collections::HashMap;
 
 use crate::linear_algebra::Vector3D;
 use kdtree::{distance::squared_euclidean, KdTree};
@@ -158,7 +158,7 @@ pub fn shrink_ball(
                         let mut file_handle = OpenOptions::new()
                             .append(true)
                             .create(true)
-                            .open("./output/log_medial_points.txt")
+                            .open("./output/log_medial_points.xyz")
                             .expect("Unable to open file");
 
                         file_handle
