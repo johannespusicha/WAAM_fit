@@ -114,18 +114,19 @@ filter = "small_outer_radii"
 # Configures filter for use on data in features
 [filter.parallel]
 data = "angles.inner"
-less_eq = 22.5
+less_eq = 85
+greater_eq = 95
 
 [filter.inner_corner]
 # All non-parallel data
 data = "angles.inner"
-greater_eq = 22.5
-less_eq = 168.75
+greater_eq = 75
+less_eq = 105
 
 [filter.outer_corner]
 data = "angles.outer"
-greater_eq = 22.5
-less_eq = 168.75
+greater_eq = 75
+less_eq = 105
 
 [filter.small_inner_distances]
 data = "distances.inner"
