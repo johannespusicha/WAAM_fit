@@ -142,9 +142,9 @@ less_eq = 4
 
 [filter.walls]
 # All radii in the size of min. wall thickness or greater
-data = "distances.inner"
-greater_eq = 2
-less_eq = 10000
+data = "radii.inner"
+greater_eq = 4.8
+less_eq = 0
 
 [styles]
 # Configuarates style settings for gmsh 
