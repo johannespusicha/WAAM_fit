@@ -256,7 +256,10 @@ def __add_as_view_to_gmsh__(tags, data: list, view_name, group=None) -> int:
         int: view_tag
     """
     view = gmsh.view.add(view_name)
-    gmsh.view.add_homogeneous_model_data(view, 0, "", "ElementData", tags=tags, data=data, numComponents=1)
+    if len(data) > 0:
+        gmsh.view.add_homogeneous_model_data(view, 0, "", "ElementData", tags=tags, data=data, numComponents=1)
+    else:
+        print("Info\t: View " + view_name + " is empty")
     gmsh.view.option.set_number(view, "Visible", 0)
     if isinstance(group, str):
         gmsh.view.option.set_string(view, "Group", group)
