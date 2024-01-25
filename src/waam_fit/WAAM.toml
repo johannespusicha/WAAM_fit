@@ -110,6 +110,11 @@ name = "Debug/Filter/Kleine äußere Radien"
 data = "radii.inner"
 filter = "small_outer_radii"
 
+[features.db_filter_walls]
+name = "Debug/Filter/Wände"
+data = "radii.inner"
+filter = "walls"
+
 [filter]
 # Configures filter for use on data in features
 [filter.parallel]
