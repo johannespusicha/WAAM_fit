@@ -57,7 +57,6 @@ data = "gradients.inner"
 min = 0.6
 filter = "walls"
 style = "gradient_red_to_yellow"
-
 # For debugging purposes uncomment the following features to present raw data
 [features.db_radii_inner]
 name = "Debug/Kenngrößen/Innerer Radius"
