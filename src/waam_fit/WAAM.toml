@@ -44,11 +44,17 @@ max = 20
 filter = "small_outer_radii"
 style = "gradient_yellow_to_red"
 
-[features.cross_sectional_area]
-name = "Querschnittsfläche"
+[features.gradient]
+name = "Gradient/Innen (Flächen)"
 data = "gradients.inner"
-min = 0
-max = 0.3
+min = 0.6
+filter = "parallel"
+style = "gradient_red_to_yellow"
+
+[features.gradient2]
+name = "Gradient/Innen (große Radien)"
+data = "gradients.inner"
+min = 0.6
 filter = "walls"
 style = "gradient_red_to_yellow"
 
