@@ -142,10 +142,10 @@ def plot_in_gmsh(elements, results):
         try: 
             data = __get_data_by_key__(results, data_key) * scale
         except:
-            print(f"Did not find {data_key} in computed results") 
+            print(f"Error\t: Did not find {data_key} in computed results") 
             continue
         else:
-            print(feature['name'])
+            print("Info\t: View " + feature['name'] + " was added")
             filter = __get_filter_as_configured__(results, feature)
             try:
                 view = __add_as_view_to_gmsh__(elements[filter].tolist(), data[filter].tolist(), name, group)
