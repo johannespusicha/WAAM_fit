@@ -181,7 +181,10 @@ def __get_filter_as_configured__(results: dict[str, dict[str, np.ndarray]], feat
             filter_max = config["filter"][filter]["less_eq"]
         except:
             filter_max = nan
-        filter = (filter_data >= filter_min) * (filter_data <= filter_max)
+        if filter_min > filter_max:
+            filter = (filter_data >= filter_min) + (filter_data <= filter_max)
+        elif filter_min <= filter_max:
+            filter = (filter_data >= filter_min) * (filter_data <= filter_max)
         return filter
     else:
         data = __get_data_by_key__(results, __parse_datatype__(feature["data"]))
