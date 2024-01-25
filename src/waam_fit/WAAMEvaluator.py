@@ -151,8 +151,8 @@ def plot_in_gmsh(elements, results):
                 view = __add_as_view_to_gmsh__(elements[filter].tolist(), data[filter].tolist(), name, group)
     
                 style = __style_from_config__(feature["style"]) if "style" in feature else {}
-                max = feature["max"] if "max" in feature else None
-                min = feature["min"] if "min" in feature else None
+                max = feature["max"] if "max" in feature else np.max(data[filter])
+                min = feature["min"] if "min" in feature else 0
                 __set_view_options__(view, max, min, config=style)
             except Exception as error:
                 print(error)
