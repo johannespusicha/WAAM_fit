@@ -94,9 +94,12 @@ def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
     for i in range(gradient.shape[0]):
         neighbours = (np.isin(inz, inz[i]).sum(axis=1) == 2).nonzero()[0]
         neighbours = neighbours[r_inner[neighbours] != -1]  # neglect invalid radii
+        neighbours = neighbours[r_inner[neighbours] != np.Inf]  # neglect infinte radii
         gradient[i] = np.linalg.norm(
-            (r_inner[i] - r_inner[neighbours]) / np.linalg.norm(centers[neighbours] - centers[i], axis=1))
+            (r_inner[i] - r_inner[neighbours]) / np.linalg.norm(centers[i] - centers[neighbours], axis=1))
     
+    #todo: Skalierung des Gradienten aufheben, sodass Heuvers-Zahlen verwendet werden können
+
     grad_inner_scaled = gradient - gradient.min()
 
     btm_95_percent = (grad_inner_scaled < grad_inner_scaled.max() * 0.95)
@@ -106,7 +109,7 @@ def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
     results = {
                "radii" : {"inner" : r_inner, "outer" : r_outer},
                "distances" : {"inner" : d_inner, "outer": d_outer},
-               "gradients" : {"inner" : grad_inner_scaled, "outer" : None},
+               "gradients" : {"inner" : gradient, "outer" : None},
                "angles" : {"inner" : alpha_inner, "outer" : alpha_outer}
                }
     
