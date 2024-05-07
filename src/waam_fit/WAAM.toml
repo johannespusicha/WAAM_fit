@@ -150,11 +150,11 @@ less_eq = 175
 
 [filter.small_inner_distances]
 data = "distances.inner"
-less_eq = 4
+less_eq = 5
 
 [filter.small_outer_distances]
 data = "distances.outer"
-less_eq = 4
+less_eq = 5
 
 [filter.small_outer_radii]
 data = "radii.outer"
