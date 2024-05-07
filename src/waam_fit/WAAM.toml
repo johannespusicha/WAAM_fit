@@ -19,14 +19,14 @@ style = "gradient_yellow_to_red"
 [features.inner_corner]
 name = "Kanten/Innen"
 data = "radii.inner"
-max = 4.8
+max = 5
 filter = "inner_corner"
 style = "gradient_yellow_to_red"
 
 [features.outer_corner]
 name = "Kanten/Außen"
 data = "radii.outer"
-max = 4.8
+max = 5
 filter = "outer_corner"
 style = "gradient_yellow_to_red"
 
