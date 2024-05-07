@@ -5,15 +5,15 @@
 [features.wall_thickness]
 name = "Abstände/Wanddicke"
 data = "distances.inner"
-max = 3.8                        # W_L
-filter = "parallel"
+max = 2                          # W_L
+filter = "parallel_inner"
 style = "gradient_yellow_to_red"
 
-[features.gap]
+[features.clearance]
 name = "Abstände/Zwischenraum"
 data = "distances.outer"
-max = 4.0                        # 1.1*W_L with W_L = 4.0
-filter = "parallel"
+max = 2.0                        # 1.1*W_L with W_L = 4.0
+filter = "parallel_outer"
 style = "gradient_yellow_to_red"
 
 [features.inner_corner]
@@ -90,10 +90,15 @@ data = "angles.inner"
 name = "Debug/Kenngrößen/Äußerer Winkel"
 data = "angles.outer"
 
-[features.db_filter_parallel]
-name = "Debug/Filter/Parallele Flächen"
+[features.db_filter_parallel_inner]
+name = "Debug/Filter/Parallele Flächen (Innen)"
 data = "angles.inner"
-filter = "parallel"
+filter = "parallel_inner"
+
+[features.db_filter_parallel_outer]
+name = "Debug/Filter/Parallele Flächen (Außen)"
+data = "angles.outer"
+filter = "parallel_outer"
 
 [features.db_filter_inner_corner]
 name = "Debug/Filter/Innere Ecken"
@@ -122,10 +127,15 @@ filter = "walls"
 
 [filter]
 # Configures filter for use on data in features
-[filter.parallel]
+[filter.parallel_inner]
 data = "angles.inner"
-less_eq = 85
-greater_eq = 95
+greater_eq = 0
+less_eq = 65
+
+[filter.parallel_outer]
+data = "angles.outer"
+greater_eq = 0
+less_eq = 65
 
 [filter.inner_corner]
 # All non-parallel data
