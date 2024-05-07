@@ -140,13 +140,13 @@ less_eq = 65
 [filter.inner_corner]
 # All non-parallel data
 data = "angles.inner"
-greater_eq = 75
-less_eq = 105
+greater_eq = 30
+less_eq = 175
 
 [filter.outer_corner]
 data = "angles.outer"
-greater_eq = 75
-less_eq = 105
+greater_eq = 30
+less_eq = 175
 
 [filter.small_inner_distances]
 data = "distances.inner"
