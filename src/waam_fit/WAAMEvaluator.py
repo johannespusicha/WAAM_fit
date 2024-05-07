@@ -35,7 +35,7 @@ for feature in config["features"]:
     if not (style is None or style in style_list):
         raise ConfigError("Did not find style " + str(style))
     
-ANALYSIS_DATATYPES = ["radii.inner", "radii.outer", "gradients.inner", "gradients.outer", "distances.inner", "distances.outer", "angles.inner", "angles.outer"]
+ANALYSIS_DATATYPES = ["radii.inner", "radii.outer", "gradients.inner", "gradients.outer", "gradients.inner_deviation", "gradients.inner_tan", "distances.inner", "distances.outer", "angles.inner", "angles.outer"]
 
 def __style_from_config__(style_key: str) -> dict[str, Any]:
     try:
@@ -97,7 +97,10 @@ def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
         neighbours = neighbours[r_inner[neighbours] != np.Inf]  # neglect infinte radii
         gradient[i] = np.linalg.norm(
             (r_inner[i] - r_inner[neighbours]) / np.linalg.norm(centers[i] - centers[neighbours], axis=1))
-    
+
+    gradient_tan = np.tan(np.deg2rad(alpha_inner/2))
+    gradient_deviation = gradient - gradient_tan
+
     #todo: Skalierung des Gradienten aufheben, sodass Heuvers-Zahlen verwendet werden können
 
     grad_inner_scaled = gradient - gradient.min()
@@ -109,7 +112,7 @@ def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
     results = {
                "radii" : {"inner" : r_inner, "outer" : r_outer},
                "distances" : {"inner" : d_inner, "outer": d_outer},
-               "gradients" : {"inner" : gradient, "outer" : None},
+               "gradients" : {"inner" : gradient, "outer" : None, "inner_deviation": gradient_deviation, "inner_tan": gradient_tan},
                "angles" : {"inner" : alpha_inner, "outer" : alpha_outer}
                }
     
