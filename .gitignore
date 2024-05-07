@@ -1,6 +1,7 @@
 __pycache__/*
 src/waam_fit/__pycache__/*
 src/waam_fit/*.so
+.waamfit/*
 
 ressources/
 .vscode/
