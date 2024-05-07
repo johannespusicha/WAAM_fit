@@ -30,13 +30,6 @@ max = 4.8
 filter = "outer_corner"
 style = "gradient_yellow_to_red"
 
-[features.inner_angle]
-name = "Winkel/Innen"
-data = "angles.inner"
-max = 20
-filter = "small_inner_distances"
-style = "gradient_yellow_to_red"
-
 [features.outer_angle]
 name = "Winkel/Außen"
 data = "angles.outer"
