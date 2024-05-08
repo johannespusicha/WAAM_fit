@@ -1,7 +1,10 @@
+from dataclasses import dataclass
+from enum import Enum
 from math import nan
 import re
 import gmsh
 import numpy as np
+import numpy.typing as npt
 import tomllib, os
 from typing import Any, Tuple
 from waam_fit import rust_methods
@@ -35,7 +38,13 @@ for feature in config["features"]:
     if not (style is None or style in style_list):
         raise ConfigError("Did not find style " + str(style))
     
-ANALYSIS_DATATYPES = ["radii.inner", "radii.outer", "gradients.inner", "gradients.outer", "gradients.inner_deviation", "gradients.inner_tan", "distances.inner", "distances.outer", "angles.inner", "angles.outer"]
+INCLUDEBASEPLATE = config.get("settings", {}).get("includeBaseplate", False)
+
+ANALYSIS_DATATYPES = ["radii.inner", "radii.outer", 
+                                 "gradients.inner", "gradients.outer", "gradients.inner_deviation", "gradients.inner_tan", 
+                                 "distances.inner", "distances.outer", 
+                                 "angles.inner", "angles.outer",
+                                 "heights", "tilt_angles"]
 
 def __style_from_config__(style_key: str) -> dict[str, Any]:
     try:
@@ -68,9 +77,17 @@ def __parse_name__(name: str):
     else:
         raise ConfigError("Missing name attribute")
 
+@dataclass
+class Brep:
+    node_coordinates: npt.NDArray
+    inz: npt.NDArray
+    centers: npt.NDArray
+    normals: npt.NDArray
+    element_tags: npt.NDArray
+
 gmsh.initialize()
 
-def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
+def evaluateGeometry(input: str, output:str, triangulationSizing=0.0, base_points: Tuple[Tuple[float, float, float], Tuple[float, float, float]] | None = None) -> None:
     """Evaluate all inner and outer spheres on given shape and save to output
 
     Args:
@@ -78,19 +95,15 @@ def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
         output (string): Path to output shape
         triangulationSizing (float, optional): controls size of triangulation. Defaults to 0.0 for auto-sizing.
     """
-    nc, inz, centers, normals, elementTags = getTriangulation(input, triangulationSizing)
+    # nc, inz, centers, normals, elementTags = getTriangulation(input, triangulationSizing)
+    geometry = getTriangulation(input, triangulationSizing)
 
-    r_inner, d_inner, alpha_inner = rust_methods.get_sphere_radii(centers, -normals, elementTags.tolist()) # type: ignore
-    r_inner = np.array(r_inner)
-    d_inner = np.array(d_inner)
-    alpha_inner = np.array(alpha_inner)
+    results = compute_indicators(geometry, base_points)
 
-    r_outer, d_outer, alpha_outer = rust_methods.get_sphere_radii(centers, normals, elementTags.tolist()) # type: ignore
-    r_outer = np.array(r_outer)
-    d_outer = np.array(d_outer)
-    alpha_outer = np.array(alpha_outer)
-
+    r_inner = results["radii"]["inner"]
     gradient = np.zeros_like(r_inner)
+    inz = geometry.inz
+    centers = geometry.centers
     for i in range(gradient.shape[0]):
         neighbours = (np.isin(inz, inz[i]).sum(axis=1) == 2).nonzero()[0]
         neighbours = neighbours[r_inner[neighbours] != -1]  # neglect invalid radii
@@ -98,25 +111,15 @@ def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
         gradient[i] = np.linalg.norm(
             (r_inner[i] - r_inner[neighbours]) / np.linalg.norm(centers[i] - centers[neighbours], axis=1))
 
-    gradient_tan = np.tan(np.deg2rad(alpha_inner/2))
+    gradient_tan = np.tan(np.deg2rad(results["angles"]["inner"]/2))
     gradient_deviation = gradient - gradient_tan
 
-    #todo: Skalierung des Gradienten aufheben, sodass Heuvers-Zahlen verwendet werden können
-
-    grad_inner_scaled = gradient - gradient.min()
-
-    btm_95_percent = (grad_inner_scaled < grad_inner_scaled.max() * 0.95)
-    grad_inner_scaled[grad_inner_scaled >= grad_inner_scaled.max() * 0.95] = grad_inner_scaled[btm_95_percent.nonzero()[0][grad_inner_scaled[btm_95_percent].argmax()]]
-    grad_inner_scaled = grad_inner_scaled / grad_inner_scaled.max()
-
-    results = {
-               "radii" : {"inner" : r_inner, "outer" : r_outer},
-               "distances" : {"inner" : d_inner, "outer": d_outer},
-               "gradients" : {"inner" : gradient, "outer" : None, "inner_deviation": gradient_deviation, "inner_tan": gradient_tan},
-               "angles" : {"inner" : alpha_inner, "outer" : alpha_outer}
-               }
+    results["gradients"] = {}
+    results["gradients"]["inner"] = gradient
+    results["gradients"]["inner_tan"] = gradient_tan
+    results["gradients"]["inner_deviation"] = gradient_deviation
     
-    plot_in_gmsh(elementTags.tolist(), results)
+    plot_in_gmsh(geometry.element_tags.tolist(), results)
 
     # Save data
     if not os.path.exists(os.path.dirname(output)):
@@ -128,6 +131,30 @@ def evaluateSpheres(input: str, output:str, triangulationSizing=0.0) -> None:
         gmsh.fltk.wait()
     gmsh.finalize()
 
+def compute_indicators(geometry: Brep, base_points: Tuple[Tuple[float, float, float], Tuple[float, float, float]] | None = None):
+    results = {}
+    results["radii"] = {}
+    results["distances"] = {}
+    results["angles"] = {}
+
+    for dir in ["inner", "outer"]:
+        dir_fac = -1 if dir == "inner" else 1
+        if INCLUDEBASEPLATE:
+            base_points = base_points if base_points is not None else ((0,0,0), (1,1,1))
+            radii, distances, angles, heights, tilt_angles = rust_methods.get_sphere_radii(geometry.centers, dir_fac*geometry.normals, geometry.element_tags.tolist(), base_points)
+            results["radii"][dir] = np.array(radii)
+            results["distances"][dir] = np.array(distances)
+            results["angles"][dir] = np.array(angles)
+            if dir == "outer":
+                results["heights"] = np.array(heights)
+                results["tilt_angles"] = np.array(tilt_angles)
+        else:
+            radii, distances, angles = rust_methods.get_sphere_radii(geometry.centers, dir_fac*geometry.normals, geometry.element_tags.tolist())
+            results["radii"][dir] = np.array(radii)
+            results["distances"][dir] = np.array(distances)
+            results["angles"][dir] = np.array(angles)
+    
+    return results
 
 def plot_in_gmsh(elements, results):
     """Visualize provided data in gmsh by respecting options set in WAAM.toml
@@ -193,7 +220,7 @@ def __get_filter_as_configured__(results: dict[str, dict[str, np.ndarray]], feat
         data = __get_data_by_key__(results, __parse_datatype__(feature["data"]))
         return np.ones_like(data, dtype=bool)
 
-def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+def getTriangulation(input: str, triangulationSizing=0.0) -> Brep:
     """Create triangulation mesh on input file and return mesh
 
     The mesh will be returned as BREP (boundary representation) with the node coordinates, the inzidenz_matrix (which gives the relation between nodes and edges) and ?
@@ -216,7 +243,9 @@ def getTriangulation(input: str, triangulationSizing=0.0) -> Tuple[np.ndarray, n
         nc, inz, C, N, elemTags = __MshFromGmsh__()
     else:
         raise ValueError('File format is not supported')
-    return nc, inz, C, N, elemTags
+    
+    geometry = Brep(nc, inz, C, N, elemTags)
+    return geometry
 
 def __MshFromGmsh__():
     """Do unknown operation

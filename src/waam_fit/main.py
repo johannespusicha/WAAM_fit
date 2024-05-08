@@ -1,3 +1,4 @@
+import argparse
 import sys
 from waam_fit import WAAMEvaluator
 
@@ -7,21 +8,17 @@ from waam_fit import WAAMEvaluator
 #    main()
 
 def main():    
-    args = sys.argv
-    if len(args) < 2:
-        print('Please provide a path for the step file to process.\n')
-        quit(0)
-    InputPath = args[1]
-    OutputPath = ''
-    option = ''
-    stepSize = 0
-    for i in range(2, len(args)):
-        if option == '':
-            option = args[i]
-        else:
-            if option == '-o':
-                OutputPath = args[i]
-            elif option == '-s':
-                stepSize = float(args[i])
-            option = ''
-    WAAMEvaluator.evaluateSpheres(InputPath, OutputPath, stepSize)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_path", type=str)
+    parser.add_argument("-o", type=str)
+    parser.add_argument("-s", type=float)
+    parser.add_argument("-b", type=float, nargs=6)
+    
+    args = parser.parse_args()
+
+    output_path = args.o if args.o else "./"
+    step_size = args.s if args.s else 0.0
+    base_points = (((args.b[0], args.b[1], args.b[2]), (args.b[3], args.b[4], args.b[5])) 
+                   if args.b == 6 else None)
+
+    WAAMEvaluator.evaluateGeometry(args.input_path, output_path, step_size, base_points)
