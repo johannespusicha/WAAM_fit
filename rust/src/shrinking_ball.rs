@@ -14,6 +14,8 @@ pub struct TreeManager3D {
     data: KdTree<f64, usize, [f64; 3]>,
     index: HashMap<usize, BrepElement>,
     extent: f64,
+    #[cfg(feature = "includeBaseplate")]
+    base_n: Vector3D,
 }
 
 impl TreeManager3D {
@@ -21,6 +23,7 @@ impl TreeManager3D {
         points: Vec<Vector3D>,
         normals: Vec<Vector3D>,
         indices: Vec<u64>,
+        #[cfg(feature = "includeBaseplate")] base: (Vector3D, Vector3D),
     ) -> Self {
         assert!(points.len() == normals.len(), "Length of points and normals did not match. Since they are corresponding data, they are required to have equal size.");
         let mut tree: KdTree<f64, usize, [f64; 3]> = KdTree::with_capacity(3, 64);
@@ -44,6 +47,8 @@ impl TreeManager3D {
             data: tree,
             index: map,
             extent,
+            #[cfg(feature = "includeBaseplate")]
+            base_n: surface_normal(base.0, base.1),
         }
     }
 
@@ -106,6 +111,11 @@ fn extent(points: &[Vector3D]) -> f64 {
     ((x_max - x_min).powi(2) + (y_max - y_min).powi(2) + (z_max - z_min).powi(2)).sqrt()
 }
 
+fn surface_normal(point_a: Vector3D, point_b: Vector3D) -> Vector3D {
+    let normal = point_a.cross(&point_b);
+    normal * (1.0 / normal.length())
+}
+
 /// Calculates the medial radius for a given base point and normal by applying the shrinking ball algorithm.
 ///
 ///
@@ -162,12 +172,19 @@ pub fn shrink_ball(
     ))
 }
 
+#[cfg(not(feature = "includeBaseplate"))]
+pub type ReturnEvalRadii = (Vec<f64>, Vec<f64>, Vec<f64>);
+#[cfg(feature = "includeBaseplate")]
+pub type ReturnEvalRadii = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>);
+
 impl TreeManager3D {
-    pub fn eval_radii(&self) -> (Vec<f64>, Vec<f64>, Vec<f64>) {
+    pub fn eval_radii(&self) -> ReturnEvalRadii {
         let mut radii: Vec<(&usize, f64)> = vec![];
         let mut distances = vec![];
         let mut angles = vec![];
         let mut centers = String::new();
+        let mut heights: Vec<(&usize, f64)> = vec![];
+        let mut tilt_angles: Vec<(&usize, f64)> = vec![];
 
         for (index, element) in &self.index {
             let (radius, distance, angle, center) =
@@ -183,6 +200,14 @@ impl TreeManager3D {
             angles.push((index, angle));
             if let Some(point) = center {
                 centers.push_str(&format!("{} {} {}\n", point.i, point.j, point.k));
+            }
+
+            #[cfg(feature = "includeBaseplate")]
+            {
+                let element_height = element.point.dot(&self.base_n);
+                heights.push((index, element_height));
+                let element_tilt_angle = (element_height / element.point.length()).acos();
+                tilt_angles.push((index, element_tilt_angle));
             }
         }
 
@@ -206,14 +231,33 @@ impl TreeManager3D {
                 .expect("Unable to write data");
         }
 
-        radii.sort_unstable_by_key(|tuple| tuple.0);
-        distances.sort_unstable_by_key(|tuple| tuple.0);
-        angles.sort_unstable_by_key(|tuple| tuple.0);
-        (
-            radii.iter().map(|tuple| tuple.1).collect(),
-            distances.iter().map(|tuple| tuple.1).collect(),
-            angles.iter().map(|tuple| tuple.1).collect(),
-        )
+        #[cfg(not(feature = "includeBaseplate"))]
+        {
+            radii.sort_unstable_by_key(|tuple| tuple.0);
+            distances.sort_unstable_by_key(|tuple| tuple.0);
+            angles.sort_unstable_by_key(|tuple| tuple.0);
+            (
+                radii.iter().map(|tuple| tuple.1).collect(),
+                distances.iter().map(|tuple| tuple.1).collect(),
+                angles.iter().map(|tuple| tuple.1).collect(),
+            )
+        }
+
+        #[cfg(feature = "includeBaseplate")]
+        {
+            radii.sort_unstable_by_key(|tuple| tuple.0);
+            distances.sort_unstable_by_key(|tuple| tuple.0);
+            angles.sort_unstable_by_key(|tuple| tuple.0);
+            heights.sort_unstable_by_key(|tuple| tuple.0);
+            tilt_angles.sort_unstable_by_key(|tuple| tuple.0);
+            (
+                radii.iter().map(|tuple| tuple.1).collect(),
+                distances.iter().map(|tuple| tuple.1).collect(),
+                angles.iter().map(|tuple| tuple.1).collect(),
+                heights.iter().map(|tuple| tuple.1).collect(),
+                tilt_angles.iter().map(|tuple| tuple.1).collect(),
+            )
+        }
     }
 }
 

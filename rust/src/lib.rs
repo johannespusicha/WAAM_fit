@@ -11,7 +11,8 @@ fn get_sphere_radii(
     centers: PyReadonlyArray2<f64>,
     normals: PyReadonlyArray2<f64>,
     indices: Vec<u64>,
-) -> PyResult<(Vec<f64>, Vec<f64>, Vec<f64>)> {
+    #[cfg(feature = "includeBaseplate")] base: ((f64, f64, f64), (f64, f64, f64)),
+) -> PyResult<ReturnEvalRadii> {
     if centers.len() != normals.len() {
         return Err(PyValueError::new_err(format!("The node_coordinates and normal_vectors matrices must have the same length. Found: {:?} and {:?}", centers.len(), normals.len())));
     }
@@ -27,10 +28,22 @@ fn get_sphere_radii(
         .into_iter()
         .map(|row| Vector3D::new(row[0], row[1], row[2]))
         .collect();
+    #[cfg(not(feature = "includeBaseplate"))]
+    {
+        let tree = TreeManager3D::from_points_and_normals(centers, normals, indices);
 
-    let tree = TreeManager3D::from_points_and_normals(centers, normals, indices);
+        Ok(tree.eval_radii())
+    }
 
-    Ok(tree.eval_radii())
+    #[cfg(feature = "includeBaseplate")]
+    {
+        let base_a = Vector3D::from(base.0);
+        let base_b = Vector3D::from(base.1);
+        let tree =
+            TreeManager3D::from_points_and_normals(centers, normals, indices, (base_a, base_b));
+
+        Ok(tree.eval_radii())
+    }
 }
 
 /// A Python module implemented in Rust.
