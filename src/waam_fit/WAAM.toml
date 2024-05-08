@@ -202,3 +202,6 @@ SaturateValues = 0
 ShowScale = 1
 RangeType = 2
 ScaleType = 2         # logarithmic Scale
+
+[settings]
+includeBaseplate = true
