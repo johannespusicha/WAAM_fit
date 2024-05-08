@@ -32,6 +32,14 @@ impl Vector3D {
             .mul_add(other.i, self.j.mul_add(other.j, self.k * other.k))
     }
 
+    pub fn cross(&self, other: &Self) -> Self {
+        Self {
+            i: self.j * other.k - self.k * other.j,
+            j: self.k * other.i - self.i * other.k,
+            k: self.i * other.j - self.j * other.i,
+        }
+    }
+
     pub fn distance_to(&self, b: &Self) -> f64 {
         (b - self).length()
     }
@@ -165,6 +173,14 @@ mod linear_algebra_tests {
         let v2 = Vector3D::new(2, 2, 2);
 
         assert_eq!(v1.dot(&v2), 2.0);
+    }
+
+    #[test]
+    fn test_cross_product() {
+        let e1 = Vector3D::new(1, 0, 0);
+        let e2 = Vector3D::new(0, 1, 0);
+
+        assert_eq!(e1.cross(&e2), Vector3D::new(0, 0, 1));
     }
 
     #[test]
