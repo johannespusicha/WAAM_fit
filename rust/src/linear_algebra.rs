@@ -27,6 +27,10 @@ impl Vector3D {
         [self.i, self.j, self.k]
     }
 
+    pub const fn to_tuple(self) -> (f64, f64, f64) {
+        (self.i, self.j, self.k)
+    }
+
     pub fn dot(&self, other: &Self) -> f64 {
         self.i
             .mul_add(other.i, self.j.mul_add(other.j, self.k * other.k))
@@ -42,6 +46,16 @@ impl Vector3D {
 
     pub fn distance_to(&self, b: &Self) -> f64 {
         (b - self).length()
+    }
+}
+
+impl From<(f64, f64, f64)> for Vector3D {
+    fn from(tuple: (f64, f64, f64)) -> Self {
+        Self {
+            i: tuple.0,
+            j: tuple.1,
+            k: tuple.2,
+        }
     }
 }
 
@@ -128,6 +142,11 @@ mod linear_algebra_tests {
     }
 
     #[test]
+    fn test_from_tuple() {
+        assert_eq!(Vector3D::new(1, 2, 3), Vector3D::from((1.0, 2.0, 3.0)))
+    }
+
+    #[test]
     fn test_add_vector3d_to_vector3d() {
         let v1 = Vector3D::new(1.0, 2.0, 3.0);
         let v2 = Vector3D::new(2.0, 3.0, 4.0);
@@ -165,6 +184,12 @@ mod linear_algebra_tests {
     fn test_vector_to_array() {
         let v = Vector3D::new(2.0, 3.0, 4.0);
         assert_eq!(v.to_array(), [2.0, 3.0, 4.0])
+    }
+
+    #[test]
+    fn test_vector_to_tuple() {
+        let v = Vector3D::new(2.0, 3.0, 4.0);
+        assert_eq!(v.to_tuple(), (2.0, 3.0, 4.0))
     }
 
     #[test]
