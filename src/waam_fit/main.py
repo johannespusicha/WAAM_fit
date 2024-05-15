@@ -19,6 +19,5 @@ def main():
     output_path = args.o if args.o else "./"
     step_size = args.s if args.s else 0.0
     base_points = (((args.b[0], args.b[1], args.b[2]), (args.b[3], args.b[4], args.b[5])) 
-                   if args.b == 6 else None)
-
+                   if len(args.b) == 6 else None)
     WAAMEvaluator.evaluateGeometry(args.input_path, output_path, step_size, base_points)
