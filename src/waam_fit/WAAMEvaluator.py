@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import tomllib, os
 from typing import Any, Tuple
-from waam_fit import rust_methods
+from waam_fit import rust_methods # type: ignore
 
 class ConfigError(Exception):
     pass
@@ -145,7 +145,7 @@ def compute_indicators(geometry: Brep, base_points: Tuple[Tuple[float, float, fl
             results["radii." + dir] = np.array(radii)
             results["distances." + dir] = np.array(distances)
             results["angles." + dir] = np.array(angles)
-            if dir == "outer":
+            if dir == "inner":
                 results["heights"] = np.array(heights)
                 results["tilt_angles"] = np.array(tilt_angles)
         else:
