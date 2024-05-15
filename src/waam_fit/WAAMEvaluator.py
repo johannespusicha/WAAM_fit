@@ -1,7 +1,5 @@
 from dataclasses import dataclass
-from enum import Enum
 from math import nan
-import re
 import gmsh
 import numpy as np
 import numpy.typing as npt
@@ -95,6 +93,12 @@ def evaluateGeometry(input: str, output:str, triangulationSizing=0.0, base_point
         output (string): Path to output shape
         triangulationSizing (float, optional): controls size of triangulation. Defaults to 0.0 for auto-sizing.
     """
+    if INCLUDEBASEPLATE:
+        if base_points is not None:
+            print("Info\t: Baseplate defined by " + str(base_points[0]) + " and " + str(base_points[1])) 
+        else:
+            print("Warning\t: No baseplate was specified.")
+
     # nc, inz, centers, normals, elementTags = getTriangulation(input, triangulationSizing)
     geometry = getTriangulation(input, triangulationSizing)
 
