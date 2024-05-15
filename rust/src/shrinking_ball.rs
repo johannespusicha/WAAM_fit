@@ -80,6 +80,17 @@ impl TreeManager3D {
             }
         }
     }
+
+    pub fn get_stats(&self) -> String {
+        format!(
+            "Extent: {0:.3} Basen orientation: ({1}, {2}, {3}) Points: {4}",
+            self.extent,
+            self.base_n.i,
+            self.base_n.j,
+            self.base_n.k,
+            self.index.len()
+        )
+    }
 }
 
 fn extent(points: &[Vector3D]) -> f64 {
@@ -112,6 +123,9 @@ fn extent(points: &[Vector3D]) -> f64 {
 }
 
 fn surface_normal(point_a: Vector3D, point_b: Vector3D) -> Vector3D {
+    let zero = Vector3D::new(0.0, 0.0, 0.0);
+    assert_ne!(point_a, zero, "Error\t: The base vector must not be zero");
+    assert_ne!(point_b, zero, "Error\t: The base vector must not be zero");
     let normal = point_a.cross(&point_b);
     normal * (1.0 / normal.length())
 }
@@ -167,7 +181,7 @@ pub fn shrink_ball(
     }
     // In the case that all remaining cycles are used up before a solution was found:
     Err(format!(
-        "Iteration did not converge. Giving up on this point:  {:?}",
+        "Warning\t: Iteration did not converge on this point:  {:?}",
         base
     ))
 }

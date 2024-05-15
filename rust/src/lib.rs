@@ -41,6 +41,8 @@ fn get_sphere_radii(
         let base_b = Vector3D::from(base.1);
         let tree =
             TreeManager3D::from_points_and_normals(centers, normals, indices, (base_a, base_b));
+        println!("Info\t: Done partitioning k-d-tree.");
+        println!("Info\t: {}", tree.get_stats());
 
         Ok(tree.eval_radii())
     }
