@@ -62,13 +62,13 @@ def __constraints_from_config__(group, feature):
             constraints[limit] = None
     return constraints
 
-def __parse_datatype__(datatype: str):
+def __verify_datatype__(datatype: str):
     if (datatype == "") or (datatype is None):
         raise ConfigError("Missing data")
     elif datatype not in ANALYSIS_DATATYPES:
         raise ConfigError("Invalid data was specified: " + str(datatype))
     else:
-        return datatype.split(".")
+        return datatype
 
 def __parse_name__(name: str):
     if not (name == "" or name is None):
@@ -100,7 +100,7 @@ def evaluateGeometry(input: str, output:str, triangulationSizing=0.0, base_point
 
     results = compute_indicators(geometry, base_points)
 
-    r_inner = results["radii"]["inner"]
+    r_inner = results["radii.inner"]
     gradient = np.zeros_like(r_inner)
     inz = geometry.inz
     centers = geometry.centers
@@ -111,13 +111,12 @@ def evaluateGeometry(input: str, output:str, triangulationSizing=0.0, base_point
         gradient[i] = np.linalg.norm(
             (r_inner[i] - r_inner[neighbours]) / np.linalg.norm(centers[i] - centers[neighbours], axis=1))
 
-    gradient_tan = np.tan(np.deg2rad(results["angles"]["inner"]/2))
+    gradient_tan = np.tan(np.deg2rad(results["angles.inner"]/2))
     gradient_deviation = gradient - gradient_tan
 
-    results["gradients"] = {}
-    results["gradients"]["inner"] = gradient
-    results["gradients"]["inner_tan"] = gradient_tan
-    results["gradients"]["inner_deviation"] = gradient_deviation
+    results["gradients.inner"] = gradient
+    results["gradients.inner_tan"] = gradient_tan
+    results["gradients.inner_deviation"] = gradient_deviation
     
     plot_in_gmsh(geometry.element_tags.tolist(), results)
 
@@ -133,26 +132,23 @@ def evaluateGeometry(input: str, output:str, triangulationSizing=0.0, base_point
 
 def compute_indicators(geometry: Brep, base_points: Tuple[Tuple[float, float, float], Tuple[float, float, float]] | None = None):
     results = {}
-    results["radii"] = {}
-    results["distances"] = {}
-    results["angles"] = {}
 
     for dir in ["inner", "outer"]:
         dir_fac = -1 if dir == "inner" else 1
         if INCLUDEBASEPLATE:
             base_points = base_points if base_points is not None else ((0,0,0), (1,1,1))
             radii, distances, angles, heights, tilt_angles = rust_methods.get_sphere_radii(geometry.centers, dir_fac*geometry.normals, geometry.element_tags.tolist(), base_points)
-            results["radii"][dir] = np.array(radii)
-            results["distances"][dir] = np.array(distances)
-            results["angles"][dir] = np.array(angles)
+            results["radii." + dir] = np.array(radii)
+            results["distances." + dir] = np.array(distances)
+            results["angles." + dir] = np.array(angles)
             if dir == "outer":
                 results["heights"] = np.array(heights)
                 results["tilt_angles"] = np.array(tilt_angles)
         else:
             radii, distances, angles = rust_methods.get_sphere_radii(geometry.centers, dir_fac*geometry.normals, geometry.element_tags.tolist())
-            results["radii"][dir] = np.array(radii)
-            results["distances"][dir] = np.array(distances)
-            results["angles"][dir] = np.array(angles)
+            results["radii." + dir] = np.array(radii)
+            results["distances." + dir] = np.array(distances)
+            results["angles." + dir] = np.array(angles)
     
     return results
 
@@ -167,13 +163,16 @@ def plot_in_gmsh(elements, results):
     elements = np.array(elements)
     for feature in config["features"].values():
         group, name = __parse_name__(feature["name"])
-        data_key = __parse_datatype__((feature["data"]))
+        data_key = __verify_datatype__((feature["data"]))
         scale = feature["scale"] if "scale" in feature else 1.0
         try: 
-            data = __get_data_by_key__(results, data_key) * scale
+            data = results[data_key] * scale
         except:
             print(f"Error\t: Did not find {data_key} in computed results") 
-            continue
+            log_data = [results.items()]
+            log_header = " ".join([results.keys()])
+            np.savetxt("log_results.csv", log_data, header=log_header)
+            
         else:
             print("Info\t: View " + feature['name'] + " was added")
             filter = __get_filter_as_configured__(results, feature)
@@ -193,16 +192,13 @@ def plot_in_gmsh(elements, results):
 
     gmsh.fltk.update()
 
-def __get_data_by_key__(results: dict[str, dict[str, np.ndarray]], key:list[str]) -> np.ndarray:
-    return results[key[0]][key[1]]
-
-def __get_filter_as_configured__(results: dict[str, dict[str, np.ndarray]], feature: dict) -> np.ndarray:
+def __get_filter_as_configured__(results: dict[str, np.ndarray], feature: dict) -> np.ndarray:
     try:
         filter = feature["filter"]
     except:
         filter = None
-    if not filter is None:
-        filter_data = __get_data_by_key__(results, __parse_datatype__(config["filter"][filter]["data"]))
+    if filter is not None:
+        filter_data = results[__verify_datatype__(config["filter"][filter]["data"])]
         try:
             filter_min = config["filter"][filter]["greater_eq"]
         except:
@@ -217,7 +213,7 @@ def __get_filter_as_configured__(results: dict[str, dict[str, np.ndarray]], feat
             filter = (filter_data >= filter_min) * (filter_data <= filter_max)
         return filter
     else:
-        data = __get_data_by_key__(results, __parse_datatype__(feature["data"]))
+        data = results[__verify_datatype__(feature["data"])]
         return np.ones_like(data, dtype=bool)
 
 def getTriangulation(input: str, triangulationSizing=0.0) -> Brep:
