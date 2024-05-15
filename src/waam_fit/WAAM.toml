@@ -98,6 +98,14 @@ data = "angles.inner"
 name = "Debug/Kenngrößen/Äußerer Winkel"
 data = "angles.outer"
 
+[features.db_heights]
+name = "Debug/Kenngrößen/Höhe"
+data = "heights"
+
+[features.db_tilt_angles]
+name = "Debug/Kenngrößen/Kippwinkel"
+data = "tilt_angles"
+
 [features.db_filter_parallel_inner]
 name = "Debug/Filter/Parallele Flächen (Innen)"
 data = "angles.inner"
