@@ -67,19 +67,23 @@ def compute_indicators(geometry: Brep, base_points: Tuple[Tuple[float, float, fl
         dir_fac = -1 if dir == "inner" else 1
         if config.INCLUDEBASEPLATE:
             base_points = base_points if base_points is not None else ((0,0,0), (1,1,1))
-            radii, distances, angles, heights, tilt_angles = rust_methods.get_sphere_radii(geometry.centers, dir_fac*geometry.normals, geometry.element_tags.tolist(), base_points)
-            results["radii." + dir] = np.array(radii)
-            results["distances." + dir] = np.array(distances)
-            results["angles." + dir] = np.array(angles)
+            (element_tags, raw_results) = rust_methods.get_sphere_radii(geometry.centers, dir_fac*geometry.normals, geometry.element_tags.tolist(), base_points)
+            sorted_index = np.array(element_tags).argsort()
+            raw_results = raw_results[sorted_index,:]
+            results["radii." + dir] = raw_results[:,0]
+            results["distances." + dir] = raw_results[:,1]
+            results["angles." + dir] = raw_results[:,2]
+            results["medial_surface." + dir] = raw_results[:,5:7]
             if dir == "inner":
-                results["heights"] = np.array(heights)
-                results["tilt_angles"] = np.array(tilt_angles)
+                results["heights"] = raw_results[:,3]
+                results["tilt_angles"] = raw_results[:,4]
+                
         else:
-            radii, distances, angles = rust_methods.get_sphere_radii(geometry.centers, dir_fac*geometry.normals, geometry.element_tags.tolist())
-            results["radii." + dir] = np.array(radii)
-            results["distances." + dir] = np.array(distances)
-            results["angles." + dir] = np.array(angles)
-    
+            (element_tags, raw_results) =  rust_methods.get_sphere_radii(geometry.centers, dir_fac*geometry.normals, geometry.element_tags.tolist())
+            results["radii." + dir] = raw_results[:,0]
+            results["distances." + dir] = raw_results[:,1]
+            results["angles." + dir] = raw_results[:,2]
+            results["medial_surface." + dir] = raw_results[:,5:7]
     return results
 
 def getTriangulation(input: str, triangulationSizing=0.0) -> Brep:

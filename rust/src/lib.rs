@@ -1,4 +1,4 @@
-use numpy::PyReadonlyArray2;
+use numpy::{IntoPyArray, PyArray2, PyReadonlyArray2};
 use pyo3::{exceptions::PyValueError, prelude::*};
 
 mod linear_algebra;
@@ -7,12 +7,13 @@ use linear_algebra::Vector3D;
 use shrinking_ball::*;
 /// Formats the sum of two numbers as string.
 #[pyfunction]
-fn get_sphere_radii(
+fn get_sphere_radii<'py>(
+    py: Python<'py>,
     centers: PyReadonlyArray2<f64>,
     normals: PyReadonlyArray2<f64>,
     indices: Vec<u64>,
     #[cfg(feature = "includeBaseplate")] base: ((f64, f64, f64), (f64, f64, f64)),
-) -> PyResult<ReturnEvalRadii> {
+) -> PyResult<(Vec<usize>, &'py PyArray2<f64>)> {
     if centers.len() != normals.len() {
         return Err(PyValueError::new_err(format!("The node_coordinates and normal_vectors matrices must have the same length. Found: {:?} and {:?}", centers.len(), normals.len())));
     }
@@ -44,7 +45,9 @@ fn get_sphere_radii(
         println!("Info\t: Done partitioning k-d-tree.");
         println!("Info\t: {}", tree.get_stats());
 
-        Ok(tree.eval_radii())
+        let (tags, raw_data) = tree.eval_radii();
+
+        Ok((tags, raw_data.into_pyarray(py)))
     }
 }
 

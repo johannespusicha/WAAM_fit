@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use crate::linear_algebra::Vector3D;
 use kdtree::{distance::squared_euclidean, KdTree};
+use ndarray::Array2;
+use numpy::array;
 
 #[derive(Debug)]
 struct BrepElement {
@@ -186,21 +188,14 @@ pub fn shrink_ball(
     ))
 }
 
-#[cfg(not(feature = "includeBaseplate"))]
-pub type ReturnEvalRadii = (Vec<f64>, Vec<f64>, Vec<f64>);
-#[cfg(feature = "includeBaseplate")]
-pub type ReturnEvalRadii = (Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>, Vec<f64>);
-
 impl TreeManager3D {
-    pub fn eval_radii(&self) -> ReturnEvalRadii {
-        let mut radii: Vec<(&usize, f64)> = vec![];
-        let mut distances = vec![];
-        let mut angles = vec![];
-        let mut centers = String::new();
-        let mut heights: Vec<(&usize, f64)> = vec![];
-        let mut tilt_angles: Vec<(&usize, f64)> = vec![];
+    pub fn eval_radii(&self) -> (Vec<usize>, Array2<f64>) {
+        let num_points = self.index.len();
+        let mut tags = vec![];
+        let mut raw_data = Array2::zeros((num_points, 8));
+        // Order of indicators: radii, distances, angles, heights, tilt_angles, centers x, centers y, centers z
 
-        for (index, element) in &self.index {
+        for (i, (element_tag, element)) in self.index.iter().enumerate() {
             let (radius, distance, angle, center) =
                 match shrink_ball(&element.point, &element.normal, self, None) {
                     Err(msg) => {
@@ -209,69 +204,26 @@ impl TreeManager3D {
                     }
                     Ok(results) => results,
                 };
-            radii.push((index, radius));
-            distances.push((index, distance));
-            angles.push((index, angle));
-            if let Some(point) = center {
-                centers.push_str(&format!("{} {} {}\n", point.i, point.j, point.k));
-            }
 
+            let center = center.unwrap_or(Vector3D::new(0, 0, 0));
+
+            #[cfg(not(feature = "includeBaseplate"))]
+            let height = 0.0;
             #[cfg(feature = "includeBaseplate")]
-            {
-                let element_height = element.point.dot(&self.base_n);
-                heights.push((index, element_height));
-                let element_tilt_angle = (element_height / element.point.length()).acos();
-                tilt_angles.push((index, element_tilt_angle));
-            }
+            let height = element.point.dot(&self.base_n);
+
+            #[cfg(not(feature = "includeBaseplate"))]
+            let tilt_angle = 0.0;
+            #[cfg(feature = "includeBaseplate")]
+            let tilt_angle = (height / element.point.length()).acos();
+
+            tags.push(*element_tag);
+            raw_data.row_mut(i).assign(&array![
+                radius, distance, angle, height, tilt_angle, center.i, center.j, center.k
+            ]);
         }
 
-        #[cfg(feature = "logmedials")]
-        {
-            use std::fs::OpenOptions;
-            use std::io::Write;
-
-            let path = format!(
-                "./output/log_medial_points_{}.xyz",
-                chrono::offset::Local::now().format("%H-%M-%S-%3f")
-            );
-            let mut file_handle = OpenOptions::new()
-                .write(true)
-                .create(true)
-                .open(path)
-                .expect("Unable to open file");
-
-            file_handle
-                .write_all(centers.as_bytes())
-                .expect("Unable to write data");
-        }
-
-        #[cfg(not(feature = "includeBaseplate"))]
-        {
-            radii.sort_unstable_by_key(|tuple| tuple.0);
-            distances.sort_unstable_by_key(|tuple| tuple.0);
-            angles.sort_unstable_by_key(|tuple| tuple.0);
-            (
-                radii.iter().map(|tuple| tuple.1).collect(),
-                distances.iter().map(|tuple| tuple.1).collect(),
-                angles.iter().map(|tuple| tuple.1).collect(),
-            )
-        }
-
-        #[cfg(feature = "includeBaseplate")]
-        {
-            radii.sort_unstable_by_key(|tuple| tuple.0);
-            distances.sort_unstable_by_key(|tuple| tuple.0);
-            angles.sort_unstable_by_key(|tuple| tuple.0);
-            heights.sort_unstable_by_key(|tuple| tuple.0);
-            tilt_angles.sort_unstable_by_key(|tuple| tuple.0);
-            (
-                radii.iter().map(|tuple| tuple.1).collect(),
-                distances.iter().map(|tuple| tuple.1).collect(),
-                angles.iter().map(|tuple| tuple.1).collect(),
-                heights.iter().map(|tuple| tuple.1).collect(),
-                tilt_angles.iter().map(|tuple| tuple.1).collect(),
-            )
-        }
+        (tags, raw_data)
     }
 }
 
