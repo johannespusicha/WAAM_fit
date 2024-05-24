@@ -1,6 +1,6 @@
 import argparse
 import sys
-from waam_fit import WAAMEvaluator
+from waam_fit import evaluate
 
 
 # Press the green button in the gutter to run the script.
@@ -21,4 +21,4 @@ def main():
     args.b = args.b if args.b else []
     base_points = (((args.b[0], args.b[1], args.b[2]), (args.b[3], args.b[4], args.b[5])) 
                    if len(args.b) == 6 else None)
-    WAAMEvaluator.evaluateGeometry(args.input_path, output_path, step_size, base_points)
+    evaluate.evaluateGeometry(args.input_path, output_path, step_size, base_points)
