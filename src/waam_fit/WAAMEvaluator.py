@@ -6,6 +6,7 @@ import numpy.typing as npt
 import tomllib, os
 from typing import Any, Tuple
 from waam_fit import rust_methods # type: ignore
+from waam_fit import visualize as vis
 
 class ConfigError(Exception):
     pass
@@ -130,9 +131,8 @@ def evaluateGeometry(input: str, output:str, triangulationSizing=0.0, base_point
     for view in gmsh.view.get_tags():
         name = gmsh.view.option.get_string(view, "Group").replace('/', '_') + '_' + gmsh.view.option.get_string(view, "Name")
         gmsh.view.write(view, output + name + ".msh")
-    while gmsh.fltk.is_available():
-        gmsh.fltk.wait()
-    gmsh.finalize()
+    
+    vis.show()
 
 def compute_indicators(geometry: Brep, base_points: Tuple[Tuple[float, float, float], Tuple[float, float, float]] | None = None):
     results = {}
