@@ -7,74 +7,7 @@ import tomllib, os
 from typing import Any, Tuple
 from waam_fit import rust_methods # type: ignore
 from waam_fit import visualize as vis
-
-class ConfigError(Exception):
-    pass
-
-with open(os.path.dirname(os.path.abspath(__file__)) + "/WAAM.toml", "rb") as file:
-    config = tomllib.load(file)
-# Validate config file
-for feature in config["features"]:
-    try:
-        filter_list = config["filter"]
-    except:
-        filter_list  = []
-    try:
-        filter = config["features"][feature]["filter"]
-    except:
-        filter = None
-    if not (filter is None or filter in filter_list):
-        raise ConfigError("Use of unspecified filter: " + str(filter))
-    
-    try:
-        style_list = config["styles"]
-    except:
-        style_list = []
-    try:
-        style = config["features"][feature]["style"]
-    except:
-        style = None
-    if not (style is None or style in style_list):
-        raise ConfigError("Did not find style " + str(style))
-    
-INCLUDEBASEPLATE = config.get("settings", {}).get("includeBaseplate", False)
-
-ANALYSIS_DATATYPES = ["radii.inner", "radii.outer", 
-                                 "gradients.inner", "gradients.outer", "gradients.inner_deviation", "gradients.inner_tan", 
-                                 "distances.inner", "distances.outer", 
-                                 "angles.inner", "angles.outer",
-                                 "heights", "tilt_angles"]
-
-def __style_from_config__(style_key: str) -> dict[str, Any]:
-    try:
-        style = config["styles"][style_key]
-    except:
-        style = {}
-    return style
-
-def __constraints_from_config__(group, feature):
-    constraints = {}
-    for limit in ["max", "min"]:
-        try:
-            constraints[limit] = config["constraints"][group][feature][limit]
-        except:
-            constraints[limit] = None
-    return constraints
-
-def __verify_datatype__(datatype: str):
-    if (datatype == "") or (datatype is None):
-        raise ConfigError("Missing data")
-    elif datatype not in ANALYSIS_DATATYPES:
-        raise ConfigError("Invalid data was specified: " + str(datatype))
-    else:
-        return datatype
-
-def __parse_name__(name: str):
-    if not (name == "" or name is None):
-        group, _, name =  name.rpartition("/")
-        return group, name
-    else:
-        raise ConfigError("Missing name attribute")
+from waam_fit import config
 
 @dataclass
 class Brep:
@@ -94,7 +27,7 @@ def evaluateGeometry(input: str, output:str, triangulationSizing=0.0, base_point
         output (string): Path to output shape
         triangulationSizing (float, optional): controls size of triangulation. Defaults to 0.0 for auto-sizing.
     """
-    if INCLUDEBASEPLATE:
+    if config.INCLUDEBASEPLATE:
         if base_points is not None:
             print("Info\t: Baseplate defined by " + str(base_points[0]) + " and " + str(base_points[1])) 
         else:
@@ -134,7 +67,7 @@ def compute_indicators(geometry: Brep, base_points: Tuple[Tuple[float, float, fl
 
     for dir in ["inner", "outer"]:
         dir_fac = -1 if dir == "inner" else 1
-        if INCLUDEBASEPLATE:
+        if config.INCLUDEBASEPLATE:
             base_points = base_points if base_points is not None else ((0,0,0), (1,1,1))
             radii, distances, angles, heights, tilt_angles = rust_methods.get_sphere_radii(geometry.centers, dir_fac*geometry.normals, geometry.element_tags.tolist(), base_points)
             results["radii." + dir] = np.array(radii)
@@ -160,9 +93,9 @@ def plot_in_gmsh(elements, results):
         results (dict[str, dict[str, array]]): Hierarchial presentation of results
     """
     elements = np.array(elements)
-    for feature in config["features"].values():
-        group, name = __parse_name__(feature["name"])
-        data_key = __verify_datatype__((feature["data"]))
+    for feature in config.config["features"].values():
+        group, name = config.__parse_name__(feature["name"])
+        data_key = config.__verify_datatype__((feature["data"]))
         scale = feature["scale"] if "scale" in feature else 1.0
         try: 
             data = results[data_key] * scale
@@ -178,7 +111,7 @@ def plot_in_gmsh(elements, results):
             try:
                 view = __add_as_view_to_gmsh__(elements[filter].tolist(), data[filter].tolist(), name, group)
     
-                style = __style_from_config__(feature["style"]) if "style" in feature else {}
+                style = config.__style_from_config__(feature["style"]) if "style" in feature else {}
                 max = feature["max"] if "max" in feature else np.max(data[filter])
                 min = feature["min"] if "min" in feature else 0
                 __set_view_options__(view, max, min, config=style)
@@ -197,13 +130,13 @@ def __get_filter_as_configured__(results: dict[str, np.ndarray], feature: dict) 
     except:
         filter = None
     if filter is not None:
-        filter_data = results[__verify_datatype__(config["filter"][filter]["data"])]
+        filter_data = results[config.__verify_datatype__(config.config["filter"][filter]["data"])]
         try:
-            filter_min = config["filter"][filter]["greater_eq"]
+            filter_min = config.config["filter"][filter]["greater_eq"]
         except:
             filter_min = 0
         try:
-            filter_max = config["filter"][filter]["less_eq"]
+            filter_max = config.config["filter"][filter]["less_eq"]
         except:
             filter_max = nan
         if filter_min > filter_max:
@@ -212,7 +145,7 @@ def __get_filter_as_configured__(results: dict[str, np.ndarray], feature: dict) 
             filter = (filter_data >= filter_min) * (filter_data <= filter_max)
         return filter
     else:
-        data = results[__verify_datatype__(feature["data"])]
+        data = results[config.__verify_datatype__(feature["data"])]
         return np.ones_like(data, dtype=bool)
 
 def getTriangulation(input: str, triangulationSizing=0.0) -> Brep:
@@ -290,8 +223,8 @@ def __add_as_view_to_gmsh__(tags, data: list, view_name, group=None) -> int:
     gmsh.view.option.set_number(view, "Visible", 0)
     if isinstance(group, str):
         gmsh.view.option.set_string(view, "Group", group)
-    if "default" in config["styles"]:
-        __set_view_options__(view, config=config["styles"]["default"])
+    if "default" in config.config["styles"]:
+        __set_view_options__(view, config=config.config["styles"]["default"])
     return view
 
 def __set_view_options__(view, max = None, min = None, config = {}) -> int:
