@@ -56,6 +56,21 @@ def save_all_views(path):
         name = gmsh.view.option.get_string(view, "Group").replace('/', '_') + '_' + gmsh.view.option.get_string(view, "Name")
         gmsh.view.write(view, path + name + ".msh")
 
+def __add_point_cloud__():
+    import random
+    t1 = gmsh.view.add("A list-based view")
+    n = 1000
+    data = []
+    for _ in range(n):
+        x = random.uniform(0.0,1.0)
+        y = random.uniform(0.0,1.0)
+        z = 0
+        vx = random.uniform(0.0,1.0)
+        vy = random.uniform(0.0,1.0)
+        vz = random.uniform(0.0,1.0)
+        data.extend([x, y, z, vx, vy, vz])
+
+    gmsh.view.add_list_data(t1, "VP", n, data)
 
 def __add_as_view_to_gmsh__(tags, data: list, view_name, group=None) -> int:
     """Add provided `data` as a view for `tags` to gmsh with `view_name` in optional `group`
