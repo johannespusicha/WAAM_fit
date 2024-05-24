@@ -83,7 +83,7 @@ impl TreeManager3D {
 
     pub fn get_stats(&self) -> String {
         format!(
-            "Extent: {0:.3} Basen orientation: ({1}, {2}, {3}) Points: {4}",
+            "Extent: {0:.3} Base orientation: ({1}, {2}, {3}) Points: {4}",
             self.extent,
             self.base_n.i,
             self.base_n.j,
