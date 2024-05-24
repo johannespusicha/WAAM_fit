@@ -125,12 +125,7 @@ def evaluateGeometry(input: str, output:str, triangulationSizing=0.0, base_point
     
     plot_in_gmsh(geometry.element_tags.tolist(), results)
 
-    # Save data
-    if not os.path.exists(os.path.dirname(output)):
-        os.mkdir(os.path.dirname(output))
-    for view in gmsh.view.get_tags():
-        name = gmsh.view.option.get_string(view, "Group").replace('/', '_') + '_' + gmsh.view.option.get_string(view, "Name")
-        gmsh.view.write(view, output + name + ".msh")
+    vis.save_all_views(output)
     
     vis.show()
 
