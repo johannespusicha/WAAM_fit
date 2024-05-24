@@ -2,11 +2,6 @@ import argparse
 import sys
 from waam_fit import evaluate
 
-
-# Press the green button in the gutter to run the script.
-#if __name__ == '__main__':
-#    main()
-
 def main():    
     parser = argparse.ArgumentParser()
     parser.add_argument("input_path", type=str)
@@ -22,3 +17,6 @@ def main():
     base_points = (((args.b[0], args.b[1], args.b[2]), (args.b[3], args.b[4], args.b[5])) 
                    if len(args.b) == 6 else None)
     evaluate.evaluateGeometry(args.input_path, output_path, step_size, base_points)
+
+if __name__ == '__main__':
+    main()
