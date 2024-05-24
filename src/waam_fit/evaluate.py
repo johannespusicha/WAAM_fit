@@ -36,6 +36,7 @@ def evaluateGeometry(input: str, output:str, triangulationSizing=0.0, base_point
 
     results = compute_indicators(geometry, base_points)
 
+    print("Info\t: Computing gradient..\n")
     r_inner = results["radii.inner"]
     gradient = np.zeros_like(r_inner)
     inz = geometry.inz
@@ -49,11 +50,13 @@ def evaluateGeometry(input: str, output:str, triangulationSizing=0.0, base_point
 
     gradient_tan = np.tan(np.deg2rad(results["angles.inner"]/2))
     gradient_deviation = gradient - gradient_tan
+    print("Info\t: Done computing gradient")
 
     results["gradients.inner"] = gradient
     results["gradients.inner_tan"] = gradient_tan
     results["gradients.inner_deviation"] = gradient_deviation
     
+    print("Info\t: Visualize resulst in Gmsh")
     vis.plot_in_gmsh(geometry.element_tags.tolist(), results)
 
     vis.save_all_views(output)
@@ -61,6 +64,7 @@ def evaluateGeometry(input: str, output:str, triangulationSizing=0.0, base_point
     vis.show()
 
 def compute_indicators(geometry: Brep, base_points: Tuple[Tuple[float, float, float], Tuple[float, float, float]] | None = None):
+    print("Info\t: Computing geometry indicators...\n")
     results = {}
 
     for dir in ["inner", "outer"]:
@@ -84,6 +88,7 @@ def compute_indicators(geometry: Brep, base_points: Tuple[Tuple[float, float, fl
             results["distances." + dir] = raw_results[:,1]
             results["angles." + dir] = raw_results[:,2]
             results["medial_surface." + dir] = raw_results[:,5:7]
+    print("Info\t: Done computing geometry indicators\n")
     return results
 
 def getTriangulation(input: str, triangulationSizing=0.0) -> Brep:
