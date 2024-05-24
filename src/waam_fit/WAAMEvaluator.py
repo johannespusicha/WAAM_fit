@@ -1,9 +1,8 @@
 from dataclasses import dataclass
-from math import nan
 import gmsh
 import numpy as np
 import numpy.typing as npt
-from typing import Any, Tuple
+from typing import Tuple
 from waam_fit import rust_methods # type: ignore
 from waam_fit import visualize as vis
 from waam_fit import config
