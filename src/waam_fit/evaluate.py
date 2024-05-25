@@ -36,7 +36,7 @@ def evaluateGeometry(input: str, output:str, triangulationSizing=0.0, base_point
 
     results = compute_indicators(geometry, base_points)
 
-    print("Info\t: Computing gradient..\n")
+    print("Info\t: Computing gradient..")
     r_inner = results["radii.inner"]
     gradient = np.zeros_like(r_inner)
     inz = geometry.inz
@@ -56,7 +56,7 @@ def evaluateGeometry(input: str, output:str, triangulationSizing=0.0, base_point
     results["gradients.inner_tan"] = gradient_tan
     results["gradients.inner_deviation"] = gradient_deviation
     
-    print("Info\t: Visualize resulst in Gmsh")
+    print("Info\t: Visualize results in Gmsh")
     vis.plot_in_gmsh(geometry.element_tags.tolist(), results)
 
     vis.save_all_views(output)
@@ -64,7 +64,7 @@ def evaluateGeometry(input: str, output:str, triangulationSizing=0.0, base_point
     vis.show()
 
 def compute_indicators(geometry: Brep, base_points: Tuple[Tuple[float, float, float], Tuple[float, float, float]] | None = None):
-    print("Info\t: Computing geometry indicators...\n")
+    print("Info\t: Computing geometry indicators...")
     results = {}
 
     for dir in ["inner", "outer"]:
@@ -77,7 +77,7 @@ def compute_indicators(geometry: Brep, base_points: Tuple[Tuple[float, float, fl
             results["radii." + dir] = raw_results[:,0]
             results["distances." + dir] = raw_results[:,1]
             results["angles." + dir] = raw_results[:,2]
-            results["medial_surface." + dir] = raw_results[:,5:7]
+            results["medial_surface." + dir] = raw_results[:,5:]
             if dir == "inner":
                 results["heights"] = raw_results[:,3]
                 results["tilt_angles"] = raw_results[:,4]
@@ -87,8 +87,8 @@ def compute_indicators(geometry: Brep, base_points: Tuple[Tuple[float, float, fl
             results["radii." + dir] = raw_results[:,0]
             results["distances." + dir] = raw_results[:,1]
             results["angles." + dir] = raw_results[:,2]
-            results["medial_surface." + dir] = raw_results[:,5:7]
-    print("Info\t: Done computing geometry indicators\n")
+            results["medial_surface." + dir] = raw_results[:,5:]
+    print("Info\t: Done computing geometry indicators")
     return results
 
 def getTriangulation(input: str, triangulationSizing=0.0) -> Brep:
