@@ -38,6 +38,9 @@ def plot_in_gmsh(elements, results):
             except Exception as error:
                 print(error)
                 continue
+    
+    __add_point_cloud__(results["medial_surface.inner"], results["radii.inner"], "Innere mediale Fläche", "Debug/MAT")
+    __add_point_cloud__(results["medial_surface.outer"], results["radii.outer"], "Äußere mediale Fläche", "Debug/MAT")
     # Hide mesh
     gmsh.option.set_number("Mesh.SurfaceEdges", 0)
     gmsh.option.set_number("Mesh.VolumeEdges", 0)
@@ -56,21 +59,19 @@ def save_all_views(path):
         name = gmsh.view.option.get_string(view, "Group").replace('/', '_') + '_' + gmsh.view.option.get_string(view, "Name")
         gmsh.view.write(view, path + name + ".msh")
 
-def __add_point_cloud__():
+def __add_point_cloud__(points, values, view_name, group=None):
     import random
-    t1 = gmsh.view.add("A list-based view")
-    n = 1000
+    view = gmsh.view.add(view_name)
+    num_points = len(values)
     data = []
-    for _ in range(n):
-        x = random.uniform(0.0,1.0)
-        y = random.uniform(0.0,1.0)
-        z = 0
-        vx = random.uniform(0.0,1.0)
-        vy = random.uniform(0.0,1.0)
-        vz = random.uniform(0.0,1.0)
-        data.extend([x, y, z, vx, vy, vz])
+    for point, value in zip(points, values):
+        data.extend([*point, value])
 
-    gmsh.view.add_list_data(t1, "VP", n, data)
+    gmsh.view.add_list_data(view, "SP", num_points, data)
+    if isinstance(group, str):
+        gmsh.view.option.set_string(view, "Group", group)
+    gmsh.view.option.set_number(view, "Visible", 0)
+    return view
 
 def __add_as_view_to_gmsh__(tags, data: list, view_name, group=None) -> int:
     """Add provided `data` as a view for `tags` to gmsh with `view_name` in optional `group`
