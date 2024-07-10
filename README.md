@@ -5,16 +5,18 @@ Technically this is solved by applying a medial axis transform (MAT). Afterwards
 The results are displayed using Gmsh where all non-manufacturable elements get highlighted.
 
 ## How to use
-The main part of the application is a python program which is invoked from the command line with, while `<input-file>` is a geometry file in the `.stp`-format:
+The main part of the application is a python program which is invoked from the command line with
 ```
 waam_fit <input-file> -o <output-file> -s <mesh-size>
 ```
+while `<input-file>` is a geometry file in the `.stp`-format.
+
 See the examples dir for example input files.
 
 ## Installation
-However, to run the python program, compilation and installation of the rust bindings and the command-line-tool is needed, which is handeld by maturin
+However, to run the python program, compilation and installation of the rust bindings and the command-line-tool is needed, which is handeld by maturin.
 It is recommended to install the tool in a python virtual envrionment (either `venv` or `conda`). 
-In the virtual environment install the python dependencies specified in `requirements.txt`. Fo example with using `pip` call :
+In the virtual environment install the python dependencies specified in `requirements.txt`. For example with using `pip` call
 ```
 pip install -r requirements.txt
 ```
